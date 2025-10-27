@@ -9,21 +9,35 @@
     background: var(--color-gray-50);
     position: relative;
     margin-bottom: 1rem;
+    /* Обеспечиваем, что все события мыши обрабатываются самой дропзоной */
+    pointer-events: auto;
 }
 
 .photo-upload__dropzone:hover {
     border-color: var(--color-primary);
     background: #f0f4ff;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 .photo-upload__dropzone.is-dragover {
     border-color: var(--color-primary);
     background: #e8f0ff;
     transform: scale(1.02);
+    box-shadow: var(--shadow-lg);
 }
 
 .photo-upload__content {
+    /* Полностью отключаем события для контента, чтобы они шли на дропзону */
+    position: relative;
     pointer-events: none;
+}
+
+.photo-upload__icon,
+.photo-upload__text {
+    /* Отключаем события только для текстовых элементов */
+    pointer-events: none;
+    user-select: none;
 }
 
 .photo-upload__icon {
@@ -31,15 +45,31 @@
     margin-bottom: 1rem;
     opacity: 0.6;
     color: var(--color-text-secondary);
+    pointer-events: none;
+    transition: all var(--transition-normal);
+}
+
+.photo-upload__dropzone:hover .photo-upload__icon {
+    opacity: 0.8;
+    transform: scale(1.1);
+    color: var(--color-primary);
 }
 
 .photo-upload__text {
     color: var(--color-text-secondary);
     font-size: 1rem;
     margin-bottom: 0.5rem;
+    pointer-events: none;
+    user-select: none;
+    transition: color var(--transition-normal);
+}
+
+.photo-upload__dropzone:hover .photo-upload__text {
+    color: var(--color-primary);
 }
 
 .photo-upload__input {
+    /* Скрываем input но оставляем доступным для программного клика */
     position: absolute;
     top: 0;
     left: 0;
@@ -47,6 +77,48 @@
     height: 100%;
     opacity: 0;
     cursor: pointer;
+    z-index: 1;
+    pointer-events: none; /* Отключаем клики по input, будем кликать программно */
+}
+
+/* Компактный вариант для горизонтальной раскладки */
+.photo-upload--compact .photo-upload__dropzone {
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.photo-upload--compact .photo-upload__icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.photo-upload--compact .photo-upload__text {
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+.photo-upload--compact .photo-upload__gallery {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.25rem;
+    overflow: visible;
+}
+
+.photo-upload--compact .photo-item__image {
+    height: 60px;
+}
+
+.photo-upload--compact .photo-upload__gallery::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.photo-upload--compact .photo-upload__gallery::-webkit-scrollbar-track {
+    background: var(--color-gray-100);
+}
+
+.photo-upload--compact .photo-upload__gallery::-webkit-scrollbar-thumb {
+    background: var(--color-gray-400);
+    border-radius: var(--border-radius-sm);
 }
 
 /* Галерея фотографий */
@@ -57,6 +129,7 @@
 }
 
 .photo-item {
+    margin: 3px;
     position: relative;
     border-radius: var(--border-radius-md);
     overflow: hidden;
@@ -133,7 +206,6 @@
     font-size: 0.75rem;
     color: var(--color-text-secondary);
     text-align: center;
-    background: rgba(248, 249, 250, 0.95);
 }
 
 /* Фотографии в коллаже */
@@ -146,6 +218,8 @@
     overflow: hidden;
     user-select: none;
     transition: all var(--transition-fast);
+    /* Улучшаем z-index управление - фото должны быть выше unified canvas */
+    z-index: 10;
 }
 
 .collage-photo:hover {
@@ -158,11 +232,6 @@
     box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
-.collage-photo.is-dragging {
-    opacity: 0.8;
-    transform: rotate(2deg);
-    z-index: 100;
-}
 
 .collage-photo__image {
     width: 100%;
@@ -180,7 +249,7 @@
     gap: 2px;
     opacity: 0;
     transition: all var(--transition-normal);
-    z-index: 20;
+    z-index: 30; /* Высокий z-index чтобы кнопки были поверх всего */
 }
 
 .collage-photo:hover .collage-photo__controls {
@@ -199,6 +268,8 @@
     justify-content: center;
     transition: all var(--transition-fast);
     color: var(--color-white);
+    position: relative;
+    z-index: 50; /* Очень высокий z-index для кликабельности */
 }
 
 .collage-photo__control--rotate {
@@ -268,6 +339,12 @@
     transition: transform var(--transition-normal);
 }
 
+.modal__content--preview {
+    max-width: 1200px;
+    width: 95%;
+    max-height: 95vh;
+}
+
 .modal.is-visible .modal__content {
     transform: scale(1);
 }
@@ -312,6 +389,13 @@
     overflow-y: auto;
 }
 
+.modal__body--preview {
+    padding: 2rem;
+    max-height: 75vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow-y: auto;
+}
+
 .modal__footer {
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--color-gray-100);
@@ -350,6 +434,15 @@
 
 .modal__button--secondary:hover {
     background: var(--color-gray-100);
+}
+
+.modal__button--danger {
+    background: var(--color-danger);
+    color: var(--color-white);
+}
+
+.modal__button--danger:hover {
+    background: #c82333;
 }
 
 /* Настройки фотографии */
@@ -487,30 +580,6 @@
     bottom: -6px;
 }
 
-/* Пустое состояние */
-.empty-state {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: var(--color-text-secondary);
-}
-
-.empty-state__icon {
-    font-size: 4rem;
-    opacity: 0.3;
-    margin-bottom: 1rem;
-    color: var(--color-text-secondary);
-}
-
-.empty-state__text {
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
-}
-
-.empty-state__subtext {
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
-
 /* Уведомления */
 .notification {
     position: fixed;
@@ -582,8 +651,176 @@
     cursor: pointer;
     user-select: none;
 }
-
 .collage-settings__checkbox input[type="checkbox"] {
     margin-right: 0.5rem;
     transform: scale(1.2);
+}
+
+/* Специальная анимация для клика по dropzone */
+@keyframes dropzoneClick {
+    0% {
+        transform: scale(1);
+        border-color: var(--color-gray-200);
+        box-shadow: var(--shadow-md);
+    }
+    50% {
+        transform: scale(1.02);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 4px var(--color-primary-light);
+        background: #f0f4ff;
+    }
+    100% {
+        transform: scale(1);
+        border-color: var(--color-gray-200);
+        box-shadow: var(--shadow-md);
+    }
+}
+
+.photo-upload__dropzone.animate-pulse {
+    animation: dropzoneClick 0.4s ease-out;
+}
+
+/* Улучшение визуальной обратной связи */
+.photo-upload__dropzone:active {
+    transform: scale(0.98);
+}
+
+.photo-upload__input:hover {
+    /* Показываем что input активен через изменение курсора родителя */
+}
+
+.photo-upload__dropzone:hover {
+    border-color: var(--color-primary);
+    background: #f0f4ff;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.photo-upload__dropzone:hover .photo-upload__text:first-of-type {
+    color: var(--color-primary);
+    font-weight: bold;
+}
+
+/* Предпросмотр альбома */
+
+
+/* Объединенная рабочая зона для drag&drop */
+.unified-canvas-zone {
+    position: absolute;
+    z-index: 10;
+    pointer-events: auto;
+    border-radius: var(--border-radius-md);
+    transition: all var(--transition-fast);
+    /* Позиционирование будет устанавливаться через JS */
+}
+
+.unified-canvas-zone.is-dragover {
+    background: rgba(102, 126, 234, 0.15);
+    border: 3px dashed var(--color-primary);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+    transform: scale(1.02);
+}
+
+/* Улучшенные стили для фотографий в коллаже */
+.collage-photo {
+    position: absolute;
+    border: 2px solid var(--color-white);
+    box-shadow: var(--shadow-sm);
+    cursor: move;
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+    user-select: none;
+    transition: all var(--transition-fast);
+    /* Улучшаем z-index управление */
+    z-index: 1;
+}
+
+.collage-photo:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    z-index: 20;
+    transform: scale(1.02);
+}
+
+.collage-photo.is-selected {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+    z-index: 25;
+}
+
+.collage-photo.is-dragging {
+    opacity: 0.9;
+    transform: rotate(2deg) scale(1.05);
+    z-index: 100;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Улучшенные стили для перетаскивания между страницами */
+.collage-photo[data-page="left"] {
+    /* Можно добавить специфичные стили для левой страницы */
+}
+
+.collage-photo[data-page="right"] {
+    /* Можно добавить специфичные стили для правой страницы */
+}
+
+/* Визуальные индикаторы границ страниц при перетаскивании */
+.album-spread__page.drag-target {
+    background: linear-gradient(to bottom, #f8f9ff 0%, #f0f4ff 100%);
+    box-shadow: inset 0 0 20px rgba(102, 126, 234, 0.1);
+}
+
+/* Анимации для drag&drop */
+@keyframes photoDropped {
+    0% {
+        transform: scale(1.1) rotate(5deg);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.05) rotate(-2deg);
+        opacity: 0.9;
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+.collage-photo.just-dropped {
+    animation: photoDropped 0.5s ease-out;
+}
+
+/* Улучшенные стили для resizable handles */
+.ui-resizable-handle {
+    background: var(--color-primary);
+    border: 2px solid var(--color-white);
+    border-radius: var(--border-radius-sm);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.collage-photo:hover .ui-resizable-handle {
+    opacity: 1;
+}
+
+.ui-resizable-se {
+    width: 16px;
+    height: 16px;
+    right: -8px;
+    bottom: -8px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    border: 2px solid var(--color-white);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ui-resizable-se:hover {
+    background: var(--color-primary-dark);
+    transform: scale(1.2);
+}
+
+/* Стили для jQuery UI draggable helpers */
+.ui-draggable-dragging {
+    z-index: 1000 !important;
+    opacity: 0.9 !important;
+    transform: rotate(3deg) scale(1.05) !important;
 }

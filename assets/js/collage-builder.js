@@ -299,25 +299,30 @@ $(document).ready(function () {
             // Очищаем текущий коллаж
             app.clearCollage();
 
-            // Применяем алгоритм
-            const positions = algorithm(app.state.photos, canvasWidth, canvasHeight, padding);
+            // Применяем алгоритм для левой страницы
+            const leftPhotos = app.state.photos.slice(0, Math.ceil(app.state.photos.length / 2));
+            const rightPhotos = app.state.photos.slice(Math.ceil(app.state.photos.length / 2));
 
-            // Оптимизируем позиции если нужно
-            if (options.optimize !== false) {
-                const optimizedPositions = this.utils.optimizePositions(positions, canvasWidth, canvasHeight);
-                this.applyPositions(optimizedPositions);
-            } else {
-                this.applyPositions(positions);
+            if (leftPhotos.length > 0) {
+                const leftPositions = algorithm(leftPhotos, canvasWidth, canvasHeight, padding);
+                this.applyPositions(leftPositions, 'left');
+            }
+
+            if (rightPhotos.length > 0) {
+                const rightPositions = algorithm(rightPhotos, canvasWidth, canvasHeight, padding);
+                this.applyPositions(rightPositions, 'right');
             }
 
             // Показываем статистику
-            this.showStats(positions, canvasWidth, canvasHeight);
+            const allPositions = [...(leftPhotos.length > 0 ? algorithm(leftPhotos, canvasWidth, canvasHeight, padding) : []),
+                ...(rightPhotos.length > 0 ? algorithm(rightPhotos, canvasWidth, canvasHeight, padding) : [])];
+            this.showStats(allPositions, canvasWidth * 2, canvasHeight);
 
             app.showNotification(`Коллаж создан (${algorithmName})`, 'success');
         },
 
         // Применение позиций к фотографиям
-        applyPositions: function (positions) {
+        applyPositions: function (positions, page = 'left') {
             const app = window.CollageApp;
 
             positions.forEach(pos => {
@@ -328,9 +333,11 @@ $(document).ready(function () {
                     y: pos.y,
                     width: pos.width,
                     height: pos.height,
-                    rotation: pos.photo.rotation || 0
+                    rotation: pos.photo.rotation || 0,
+                    page: page
                 };
 
+                app.state.collagePhotos = app.state.collagePhotos || [];
                 app.state.collagePhotos.push(collagePhoto);
                 app.renderCollagePhoto(collagePhoto, pos.photo);
             });

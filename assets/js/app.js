@@ -11,11 +11,16 @@ $(document).ready(function () {
             maxFileSize: 10 * 1024 * 1024, // 10MB
             allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
             defaultPhotoSizes: {
-                small: {width: 5, height: 7},
-                medium: {width: 10, height: 15},
-                large: {width: 15, height: 20}
+                '5x7': {width: 5, height: 7},
+                '7.5x10': {width: 7.5, height: 10},
+                '8x10': {width: 8, height: 10},
+                '9x11': {width: 9, height: 11},
+                '10x10': {width: 10, height: 10},
+                '10x15': {width: 10, height: 15},
+                '15x20': {width: 15, height: 20}
             },
-            pixelsPerCm: 37.8 // Для конвертации см в пиксели (96 DPI)
+            pixelsPerCm: 37.8, // Будет динамически рассчитываться
+            defaultDiagonal: 24 // Диагональ экрана по умолчанию в дюймах
         },
 
         // Состояние приложения
@@ -23,9 +28,11 @@ $(document).ready(function () {
             albumWidth: 30,
             albumHeight: 20,
             photos: [],
-            collagePhotos: [],
+            collagePhotos: [], // Объединенный массив для всех фотографий коллажа
             selectedPhoto: null,
-            nextPhotoId: 1
+            nextPhotoId: 1,
+            scale: 1.0, // Добавляем масштаб
+            showGrid: true // Сетка включена по умолчанию
         },
 
         // Элементы DOM
@@ -36,22 +43,52 @@ $(document).ready(function () {
             dropzone: $('.j-dropzone'),
             fileInput: $('.j-file-input'),
             photoGallery: $('.j-photo-gallery'),
-            canvas: $('.j-canvas'),
+            canvasLeft: $('.j-canvas-left'),
+            canvasRight: $('.j-canvas-right'),
             currentSize: $('.j-current-size'),
             photoCount: $('.j-photo-count'),
-            generateLayout: $('.j-generate-layout'),
             clearAll: $('.j-clear-all'),
-            saveProject: $('.j-save-project'),
             modal: $('.j-modal'),
             modalOverlay: $('.j-modal-overlay'),
-            modalClose: $('.j-modal-close')
+            modalClose: $('.j-modal-close'),
+            photoSize: $('.j-photo-size'),
+            customWidth: $('.j-custom-width'),
+            customHeight: $('.j-custom-height'),
+            rotation: $('.j-rotation'),
+            rotationValue: $('.j-rotation-value'),
+            applySettings: $('.j-apply-settings'),
+            deletePhoto: $('.j-delete-photo'),
+            customSize: $('.j-custom-size'),
+            scaleUp: $('.j-scale-up'),
+            scaleDown: $('.j-scale-down'),
+            scaleReset: $('.j-scale-reset'),
+            scaleValue: $('.j-scale-value'),
+            scaleFit: $('.j-scale-fit'),
+            screenDiagonal: $('.j-screen-diagonal'),
+            pixelsPerCmValue: $('.j-pixels-per-cm')
         },
 
         // Инициализация приложения
         init: function () {
+            this.updatePixelsPerCm();
             this.bindEvents();
+            this.loadFromLocalStorage();
             this.updateCanvasSize();
-            this.showEmptyState();
+
+            // Устанавливаем значение диагонали в интерфейс
+            this.elements.screenDiagonal.val(this.config.defaultDiagonal);
+
+            // Включаем сетку по умолчанию
+            this.elements.canvasLeft.addClass('show-grid');
+            this.elements.canvasRight.addClass('show-grid');
+
+            // Auto-update on window resize
+            $(window).on('resize', () => {
+                this.updatePixelsPerCm();
+                // При изменении размера окна можно автоматически подгонять масштаб
+                // this.autoFitScale();
+            });
+
             console.log('Приложение инициализировано');
         },
 
@@ -61,11 +98,13 @@ $(document).ready(function () {
             this.elements.albumWidth.on('input', () => {
                 this.state.albumWidth = parseFloat(this.elements.albumWidth.val());
                 this.updateCanvasSize();
+                this.saveToLocalStorage();
             });
 
             this.elements.albumHeight.on('input', () => {
                 this.state.albumHeight = parseFloat(this.elements.albumHeight.val());
                 this.updateCanvasSize();
+                this.saveToLocalStorage();
             });
 
             // Пресеты размеров
@@ -76,6 +115,7 @@ $(document).ready(function () {
 
                 this.setAlbumSize(width, height);
                 this.updatePresetButtons($preset);
+                this.saveToLocalStorage();
             });
 
             // Drag & Drop для загрузки файлов
@@ -101,8 +141,33 @@ $(document).ready(function () {
             });
 
             // Клик для выбора файлов
-            this.elements.dropzone.on('click', () => {
-                this.elements.fileInput.click();
+            this.elements.dropzone.on('click', (e) => {
+                // Игнорируем, если событие исходит от input
+                if (e.target === this.elements.fileInput[0]) return;
+
+                e.preventDefault();
+
+                // Добавляем визуальную обратную связь
+                $(e.currentTarget).addClass('animate-pulse');
+                setTimeout(() => {
+                    $(e.currentTarget).removeClass('animate-pulse');
+                }, 300);
+
+                // Защита от множественных вызовов диалога
+                if (this._openingFileDialog) return;
+                this._openingFileDialog = true;
+                const releaseGuard = () => {
+                    this._openingFileDialog = false;
+                };
+                this.elements.fileInput.one('change', releaseGuard);
+                setTimeout(releaseGuard, 1500);
+
+                // Программно кликаем по input
+                this.elements.fileInput[0].click();
+            });
+
+            this.elements.fileInput.on('click', (e) => {
+                e.stopPropagation();
             });
 
             this.elements.fileInput.on('change', (e) => {
@@ -110,16 +175,10 @@ $(document).ready(function () {
             });
 
             // Кнопки управления
-            this.elements.generateLayout.on('click', () => {
-                this.generateAutoLayout();
-            });
-
-            this.elements.clearAll.on('click', () => {
-                this.clearCollage();
-            });
-
-            this.elements.saveProject.on('click', () => {
-                this.saveProject();
+            this.elements.clearAll.on('click', (e) => {
+                if (confirm('Вы уверены, что хотите очистить коллаж?')) {
+                    this.clearCollage();
+                }
             });
 
             // Модальные окна
@@ -131,21 +190,131 @@ $(document).ready(function () {
                 this.hideModal();
             });
 
-            // Делаем canvas областью для drop
-            this.elements.canvas.on('dragover', (e) => {
-                e.preventDefault();
-            });
-
-            this.elements.canvas.on('drop', (e) => {
-                e.preventDefault();
-                const photoId = e.originalEvent.dataTransfer.getData('text/plain');
-                if (photoId) {
-                    const rect = this.elements.canvas[0].getBoundingClientRect();
-                    const x = e.originalEvent.clientX - rect.left;
-                    const y = e.originalEvent.clientY - rect.top;
-                    this.addPhotoToCollage(photoId, x, y);
+            // Модальное окно настроек фотографии
+            this.elements.photoSize.on('change', (e) => {
+                if ($(e.target).val() === 'custom') {
+                    this.elements.customSize.show();
+                } else {
+                    this.elements.customSize.hide();
                 }
             });
+
+            this.elements.rotation.on('input', (e) => {
+                this.elements.rotationValue.text(`${$(e.target).val()}°`);
+            });
+
+            this.elements.applySettings.on('click', () => {
+                this.applyPhotoSettings();
+            });
+
+            this.elements.deletePhoto.on('click', () => {
+                if (this.state.selectedPhoto) {
+                    this.deletePhoto(this.state.selectedPhoto);
+                    this.hideModal();
+                }
+            });
+
+            // Drag & drop на canvasLeft
+            this.elements.canvasLeft.on('dragover', (e) => {
+                e.preventDefault();
+                $(e.currentTarget).addClass('is-dragover');
+            });
+
+            this.elements.canvasLeft.on('dragleave', (e) => {
+                e.preventDefault();
+                $(e.currentTarget).removeClass('is-dragover');
+            });
+
+            this.elements.canvasLeft.on('drop', (e) => {
+                e.preventDefault();
+                $(e.currentTarget).removeClass('is-dragover');
+
+                const dt = e.originalEvent.dataTransfer;
+                // Если перетащили внешние файлы — загружаем их
+                if (dt && dt.files && dt.files.length) {
+                    this.handleFiles(dt.files);
+                    return;
+                }
+                // Иначе это перетаскивание из галереи
+                const photoId = dt.getData('text/plain');
+                if (photoId) {
+                    // Получаем координаты относительно canvasLeft
+                    const canvasRect = this.elements.canvasLeft[0].getBoundingClientRect();
+
+                    const x = e.originalEvent.clientX - canvasRect.left;
+                    const y = e.originalEvent.clientY - canvasRect.top;
+
+                    // Используем координаты как есть - canvas теперь занимает всю область page-inner
+                    this.addPhotoToCollage(photoId, x, y, 'left');
+                }
+            });
+
+            // Drag & drop на canvasRight
+            this.elements.canvasRight.on('dragover', (e) => {
+                e.preventDefault();
+                $(e.currentTarget).addClass('is-dragover');
+            });
+
+            this.elements.canvasRight.on('dragleave', (e) => {
+                e.preventDefault();
+                $(e.currentTarget).removeClass('is-dragover');
+            });
+
+            this.elements.canvasRight.on('drop', (e) => {
+                e.preventDefault();
+                $(e.currentTarget).removeClass('is-dragover');
+
+                const dt = e.originalEvent.dataTransfer;
+                // Если перетащили внешние файлы — загружаем их
+                if (dt && dt.files && dt.files.length) {
+                    this.handleFiles(dt.files);
+                    return;
+                }
+                // Иначе это перетаскивание из галереи
+                const photoId = dt.getData('text/plain');
+                if (photoId) {
+                    // Получаем координаты относительно canvasRight
+                    const canvasRect = this.elements.canvasRight[0].getBoundingClientRect();
+
+                    const x = e.originalEvent.clientX - canvasRect.left;
+                    const y = e.originalEvent.clientY - canvasRect.top;
+
+                    // Используем координаты как есть - canvas теперь занимает всю область page-inner
+                    this.addPhotoToCollage(photoId, x, y, 'right');
+                }
+            });
+
+            // Предотвращаем стандартное поведение окна (например, открытие файла вкладкой)
+            $(document).on('dragover drop', function (evt) {
+                evt.preventDefault();
+            });
+
+            // Обработчики для кнопок масштабирования
+            this.elements.scaleUp.on('click', () => {
+                this.setScale(this.state.scale + 0.1);
+            });
+
+            this.elements.scaleDown.on('click', () => {
+                this.setScale(this.state.scale - 0.1);
+            });
+
+            this.elements.scaleReset.on('click', () => {
+                this.setScale(1.0);
+            });
+
+            this.elements.scaleFit.on('click', () => {
+                this.autoFitScale();
+            });
+
+            // Обработчик для диагонали экрана - автоматическое обновление
+            this.elements.screenDiagonal.on('input', () => {
+                const diagonal = parseFloat(this.elements.screenDiagonal.val()) || this.config.defaultDiagonal;
+                this.config.defaultDiagonal = diagonal;
+                this.updatePixelsPerCm();
+                this.updateCanvasSize();
+                this.saveToLocalStorage();
+            });
+
         },
 
         // Обработка загружаемых файлов
@@ -187,13 +356,13 @@ $(document).ready(function () {
                         name: file.name,
                         originalWidth: img.width,
                         originalHeight: img.height,
-                        size: 'medium',
+                        size: '10x15',
                         rotation: 0
                     };
 
                     this.state.photos.push(photo);
                     this.renderPhoto(photo);
-                    this.hideEmptyState();
+                    this.saveToLocalStorage();
                 };
                 img.src = e.target.result;
             };
@@ -243,32 +412,30 @@ $(document).ready(function () {
             // Удаляем из массива фотографий
             this.state.photos = this.state.photos.filter(photo => photo.id !== photoId);
 
-            // Удаляем из коллажа если есть
+            // Удаляем из коллажа если есть - используем универсальный метод
             this.removePhotoFromCollage(photoId);
 
             // Удаляем из DOM
             $(`.photo-item[data-photo-id="${photoId}"]`).fadeOut(300, function () {
                 $(this).remove();
             });
-
-            // Показываем пустое состояние если нет фотографий
-            if (this.state.photos.length === 0) {
-                this.showEmptyState();
-            }
+            this.saveToLocalStorage();
         },
 
-        // Добавление фотографии в коллаж
-        addPhotoToCollage: function (photoId, x = 50, y = 50) {
+        // Добавление фотографии в коллаж - универсальный метод
+        addPhotoToCollage: function (photoId, x = 50, y = 50, page = 'left') {
             const photo = this.state.photos.find(p => p.id === photoId);
             if (!photo) return;
 
             // Проверяем, не добавлена ли уже эта фотография
+            this.state.collagePhotos = this.state.collagePhotos || [];
             if (this.state.collagePhotos.find(p => p.photoId === photoId)) {
                 this.showNotification('Фотография уже добавлена в коллаж', 'warning');
                 return;
             }
 
             const size = this.config.defaultPhotoSizes[photo.size];
+            // Убираем масштаб из расчета размеров - теперь масштабирование применяется ко всему альбому
             const pixelWidth = size.width * this.config.pixelsPerCm;
             const pixelHeight = size.height * this.config.pixelsPerCm;
 
@@ -279,19 +446,22 @@ $(document).ready(function () {
                 y: y,
                 width: pixelWidth,
                 height: pixelHeight,
-                rotation: photo.rotation
+                rotation: photo.rotation,
+                page: page // Отмечаем, на какой странице фото
             };
 
             this.state.collagePhotos.push(collagePhoto);
             this.renderCollagePhoto(collagePhoto, photo);
             this.updatePhotoCount();
+            this.saveToLocalStorage();
         },
 
-        // Отображение фотографии в коллаже
+        // Отображение фотографии в коллаже - универсальный метод
         renderCollagePhoto: function (collagePhoto, photo) {
             const $collagePhoto = $(`
-                <div class="collage-photo animate-fade-in" 
+                <div class="collage-photo animate-fade-in just-dropped" 
                      data-collage-id="${collagePhoto.id}"
+                     data-page="${collagePhoto.page}"
                      style="left: ${collagePhoto.x}px; top: ${collagePhoto.y}px; 
                             width: ${collagePhoto.width}px; height: ${collagePhoto.height}px;
                             transform: rotate(${collagePhoto.rotation}deg);">
@@ -299,10 +469,15 @@ $(document).ready(function () {
                     <div class="collage-photo__controls">
                         <button class="collage-photo__control collage-photo__control--rotate j-rotate" title="Повернуть"><i class="fas fa-redo"></i></button>
                         <button class="collage-photo__control collage-photo__control--settings j-settings" title="Настройки"><i class="fas fa-cog"></i></button>
-                        <button class="collage-photo__control collage-photo__control--delete j-delete" title="Удалить"><i class="fas fa-times"></i></button>
+                        <button class="collage-photo__control collage-photo__control--delete j-delete" title="Убрать из коллажа"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
             `);
+
+            // Убираем класс анимации после завершения
+            setTimeout(() => {
+                $collagePhoto.removeClass('just-dropped');
+            }, 500);
 
             // Обработчики событий
             $collagePhoto.find('.j-rotate').on('click', (e) => {
@@ -317,14 +492,26 @@ $(document).ready(function () {
 
             $collagePhoto.find('.j-delete').on('click', (e) => {
                 e.stopPropagation();
-                this.removePhotoFromCollage(photo.id);
+                // Убираем конкретный экземпляр из коллажа по collageId, а не по photoId
+                this.removeCollagePhotoById(collagePhoto.id);
             });
 
             // Делаем элемент перетаскиваемым и изменяемым по размеру
             $collagePhoto.draggable({
+                // Для начала ограничиваем перетаскивание родительским канвасом
                 containment: 'parent',
+                start: (event, ui) => {
+                    $collagePhoto.addClass('is-dragging');
+                },
                 drag: (event, ui) => {
                     this.updateCollagePhotoPosition(collagePhoto.id, ui.position.left, ui.position.top);
+                    this.saveToLocalStorage();
+                },
+                stop: (event, ui) => {
+                    $collagePhoto.removeClass('is-dragging');
+
+                    // После окончания перетаскивания проверяем, не нужно ли перенести фото на другую страницу
+                    this.checkPhotoPageTransfer($collagePhoto, collagePhoto);
                 }
             }).resizable({
                 aspectRatio: false,
@@ -332,24 +519,31 @@ $(document).ready(function () {
                 minHeight: 50,
                 resize: (event, ui) => {
                     this.updateCollagePhotoSize(collagePhoto.id, ui.size.width, ui.size.height);
+                    this.saveToLocalStorage();
                 }
             });
 
-            this.elements.canvas.append($collagePhoto);
+            // Добавляем к соответствующему канвасу
+            const targetCanvas = collagePhoto.page === 'left' ? this.elements.canvasLeft : this.elements.canvasRight;
+            targetCanvas.append($collagePhoto);
         },
 
-        // Поворот фотографии в коллаже
+        // Поворот фотографии в коллаже - универсальный метод
         rotateCollagePhoto: function (collageId) {
             const collagePhoto = this.state.collagePhotos.find(p => p.id === collageId);
             if (!collagePhoto) return;
 
             collagePhoto.rotation = (collagePhoto.rotation + 90) % 360;
 
-            const $element = $(`.collage-photo[data-collage-id="${collageId}"]`);
+            // Находим DOM элемент
+            const $element = $(`.collage-photo[data-collage-id="${collageId}"]`,
+                collagePhoto.page === 'left' ? this.elements.canvasLeft : this.elements.canvasRight
+            );
             $element.css('transform', `rotate(${collagePhoto.rotation}deg)`);
+            this.saveToLocalStorage();
         },
 
-        // Обновление позиции фотографии в коллаже
+        // Обновление позиции фотографии в коллаже - универсальный метод
         updateCollagePhotoPosition: function (collageId, x, y) {
             const collagePhoto = this.state.collagePhotos.find(p => p.id === collageId);
             if (collagePhoto) {
@@ -358,7 +552,7 @@ $(document).ready(function () {
             }
         },
 
-        // Обновление размера фотографии в коллаже
+        // Обновление размера фотографии в коллаже - универсальный метод
         updateCollagePhotoSize: function (collageId, width, height) {
             const collagePhoto = this.state.collagePhotos.find(p => p.id === collageId);
             if (collagePhoto) {
@@ -367,72 +561,61 @@ $(document).ready(function () {
             }
         },
 
-        // Удаление фотографии из коллажа
+        // Удаление фотографии из коллажа - универсальный метод
         removePhotoFromCollage: function (photoId) {
             this.state.collagePhotos = this.state.collagePhotos.filter(p => p.photoId !== photoId);
-            $(`.collage-photo`).each((index, element) => {
+
+            $(`.collage-photo`, this.elements.canvasLeft).each((index, element) => {
                 const $element = $(element);
                 const collagePhoto = this.state.collagePhotos.find(p => p.id === $element.data('collage-id'));
-                if (!collagePhoto) {
+                if (!collagePhoto || collagePhoto.photoId === photoId) {
                     $element.fadeOut(300, function () {
                         $(this).remove();
                     });
                 }
             });
-            this.updatePhotoCount();
-        },
 
-        // Автоматическая расстановка фотографий
-        generateAutoLayout: function () {
-            if (this.state.photos.length === 0) {
-                this.showNotification('Нет фотографий для расстановки', 'warning');
-                return;
-            }
-
-            // Очищаем текущий коллаж
-            this.clearCollage();
-
-            const canvasWidth = this.state.albumWidth * this.config.pixelsPerCm;
-            const canvasHeight = this.state.albumHeight * this.config.pixelsPerCm;
-            const padding = 20;
-
-            let currentX = padding;
-            let currentY = padding;
-            let maxRowHeight = 0;
-
-            this.state.photos.forEach(photo => {
-                const size = this.config.defaultPhotoSizes[photo.size];
-                const photoWidth = size.width * this.config.pixelsPerCm;
-                const photoHeight = size.height * this.config.pixelsPerCm;
-
-                // Если фотография не помещается в ряд, переходим на следующий
-                if (currentX + photoWidth > canvasWidth - padding) {
-                    currentX = padding;
-                    currentY += maxRowHeight + padding;
-                    maxRowHeight = 0;
+            $(`.collage-photo`, this.elements.canvasRight).each((index, element) => {
+                const $element = $(element);
+                const collagePhoto = this.state.collagePhotos.find(p => p.id === $element.data('collage-id'));
+                if (!collagePhoto || collagePhoto.photoId === photoId) {
+                    $element.fadeOut(300, function () {
+                        $(this).remove();
+                    });
                 }
-
-                // Если фотография не помещается по высоте, прекращаем
-                if (currentY + photoHeight > canvasHeight - padding) {
-                    return;
-                }
-
-                this.addPhotoToCollage(photo.id, currentX, currentY);
-
-                currentX += photoWidth + padding;
-                maxRowHeight = Math.max(maxRowHeight, photoHeight);
             });
 
-            this.showNotification('Автоматическая расстановка завершена', 'success');
+            this.updatePhotoCount();
+            this.saveToLocalStorage();
+        },
+
+        // Удаление конкретного экземпляра из коллажа по collageId
+        removeCollagePhotoById: function (collageId) {
+            this.state.collagePhotos = this.state.collagePhotos.filter(p => p.id !== collageId);
+
+            // Ищем и удаляем элемент из обеих canvas
+            $(`.collage-photo[data-collage-id="${collageId}"]`, this.elements.canvasLeft).fadeOut(300, function () {
+                $(this).remove();
+            });
+            $(`.collage-photo[data-collage-id="${collageId}"]`, this.elements.canvasRight).fadeOut(300, function () {
+                $(this).remove();
+            });
+
+            this.updatePhotoCount();
+            this.saveToLocalStorage();
         },
 
         // Очистка коллажа
         clearCollage: function () {
             this.state.collagePhotos = [];
-            this.elements.canvas.find('.collage-photo').fadeOut(300, function () {
+            this.elements.canvasLeft.find('.collage-photo').fadeOut(300, function () {
+                $(this).remove();
+            });
+            this.elements.canvasRight.find('.collage-photo').fadeOut(300, function () {
                 $(this).remove();
             });
             this.updatePhotoCount();
+            this.saveToLocalStorage();
         },
 
         // Установка размеров альбома
@@ -446,15 +629,66 @@ $(document).ready(function () {
 
         // Обновление размера канваса
         updateCanvasSize: function () {
-            const pixelWidth = this.state.albumWidth * this.config.pixelsPerCm;
-            const pixelHeight = this.state.albumHeight * this.config.pixelsPerCm;
+            // Вычисляем фактические размеры в пикселях (строго по сантиметрам)
+            const pageWidth = this.state.albumWidth * this.config.pixelsPerCm;
+            const pageHeight = this.state.albumHeight * this.config.pixelsPerCm;
 
-            this.elements.canvas.css({
-                width: pixelWidth + 'px',
-                height: pixelHeight + 'px'
+            // Отладочная информация
+            console.log(`Размеры альбома: ${this.state.albumWidth} x ${this.state.albumHeight} см`);
+            console.log(`Пикселей на см: ${this.config.pixelsPerCm.toFixed(2)}`);
+            console.log(`Размер одной страницы: ${pageWidth.toFixed(0)} x ${pageHeight.toFixed(0)} пикселей`);
+            console.log(`Размер разворота: ${(pageWidth * 2).toFixed(0)} x ${pageHeight.toFixed(0)} пикселей`);
+            console.log(`Масштаб: ${(this.state.scale * 100).toFixed(0)}%`);
+
+            // Устанавливаем фактические размеры альбома в пикселях
+            const $book = $('.album-spread__book');
+            $book.css({
+                width: pageWidth * 2 + 'px', // две страницы
+                height: pageHeight + 'px'
             });
 
+            // Обновляем CSS переменную соотношения сторон для правильного отображения страниц
+            const aspectRatio = this.state.albumWidth / this.state.albumHeight;
+            document.documentElement.style.setProperty('--page-aspect-ratio', aspectRatio);
+
+            // Применяем визуальное масштабирование ко всему альбому
+            $book.css('transform', `scale(${this.state.scale})`);
+            $book.css('transform-origin', 'center center');
+
+            // Обновляем информацию о размере
             this.elements.currentSize.text(`${this.state.albumWidth}x${this.state.albumHeight} см`);
+            this.elements.scaleValue.text(`${(this.state.scale * 100).toFixed(0)}%`);
+
+            // Проверяем, нужен ли скролл
+            this.checkScrollNeeded();
+        },
+
+        // Проверка необходимости скролла
+        checkScrollNeeded: function () {
+            const $albumSpread = $('.album-spread');
+            const $book = $('.album-spread__book');
+
+            if (!$albumSpread.length || !$book.length) return;
+
+            // Получаем размеры контейнера и книги (с учетом масштаба)
+            const containerWidth = $albumSpread.width();
+            const containerHeight = $albumSpread.height();
+
+            const bookWidth = $book.width() * this.state.scale;
+            const bookHeight = $book.height() * this.state.scale;
+
+            // Учитываем отступы в background (1rem = 16px с каждой стороны)
+            const horizontalPadding = 32; // 1rem * 2 стороны = 32px
+            const verticalPadding = 16; // 0.5rem * 2 стороны = 16px
+
+            // Добавляем класс если нужен скролл
+            if (bookWidth > (containerWidth - horizontalPadding) || bookHeight > (containerHeight - verticalPadding)) {
+                $albumSpread.addClass('has-scroll');
+                // Можно опционально также показать уведомление, если хотим всплывашку:
+                // this.showNotification('Альбом больше области — для навигации используйте скроллирование мышью', 'info');
+            } else {
+                $albumSpread.removeClass('has-scroll');
+            }
         },
 
         // Обновление кнопок пресетов
@@ -465,25 +699,7 @@ $(document).ready(function () {
 
         // Обновление счетчика фотографий
         updatePhotoCount: function () {
-            this.elements.photoCount.text(this.state.collagePhotos.length);
-        },
-
-        // Показ пустого состояния
-        showEmptyState: function () {
-            if (this.state.photos.length === 0) {
-                this.elements.photoGallery.html(`
-                    <div class="empty-state">
-                        <div class="empty-state__icon"><i class="fas fa-camera fa-4x"></i></div>
-                        <div class="empty-state__text">Нет загруженных фотографий</div>
-                        <div class="empty-state__subtext">Перетащите фотографии в область выше</div>
-                    </div>
-                `);
-            }
-        },
-
-        // Скрытие пустого состояния
-        hideEmptyState: function () {
-            this.elements.photoGallery.find('.empty-state').remove();
+            this.elements.photoCount.text(this.state.collagePhotos ? this.state.collagePhotos.length : 0);
         },
 
         // Показ модального окна
@@ -499,39 +715,137 @@ $(document).ready(function () {
 
         // Показ настроек фотографии
         showPhotoSettings: function (photoId) {
-            // Логика будет реализована в photo-manager.js
-            console.log('Показать настройки для фото:', photoId);
+            const photo = this.state.photos.find(p => p.id === photoId);
+            if (!photo) return;
+
+            this.state.selectedPhoto = photoId;
+
+            // Заполняем форму
+            this.elements.photoSize.val(photo.size);
+            if (photo.size === 'custom') {
+                const size = this.config.defaultPhotoSizes[photo.size] || {width: 10, height: 15};
+                this.elements.customWidth.val(size.width);
+                this.elements.customHeight.val(size.height);
+                this.elements.customSize.show();
+            } else {
+                this.elements.customSize.hide();
+            }
+
+            this.elements.rotation.val(photo.rotation);
+            this.elements.rotationValue.text(`${photo.rotation}°`);
+
+            this.showModal('photo-settings-modal');
         },
 
-        // Сохранение проекта
-        saveProject: function () {
-            const projectData = {
+        applyPhotoSettings: function () {
+            if (!this.state.selectedPhoto) return;
+
+            const photo = this.state.photos.find(p => p.id === this.state.selectedPhoto);
+            if (!photo) return;
+
+            // Обновляем размер
+            const newSize = this.elements.photoSize.val();
+            photo.size = newSize;
+
+            // Если выбран custom, добавляем или обновляем размер
+            if (newSize === 'custom') {
+                const width = parseFloat(this.elements.customWidth.val());
+                const height = parseFloat(this.elements.customHeight.val());
+                this.config.defaultPhotoSizes['custom'] = {width, height};
+            }
+
+            // Обновляем поворот
+            photo.rotation = parseInt(this.elements.rotation.val());
+
+            // Обновляем фотографии в коллаже если они там есть
+            if (this.state.collagePhotos) {
+                this.state.collagePhotos.forEach(collagePhoto => {
+                    if (collagePhoto.photoId === photo.id) {
+                        const size = this.config.defaultPhotoSizes[photo.size];
+                        collagePhoto.width = size.width * this.config.pixelsPerCm;
+                        collagePhoto.height = size.height * this.config.pixelsPerCm;
+                        collagePhoto.rotation = photo.rotation;
+
+                        // Обновляем DOM-элемент
+                        const $element = $(`.collage-photo[data-collage-id="${collagePhoto.id}"]`,
+                            collagePhoto.page === 'left' ? this.elements.canvasLeft : this.elements.canvasRight
+                        );
+                        $element.css({
+                            width: collagePhoto.width + 'px',
+                            height: collagePhoto.height + 'px',
+                            transform: `rotate(${collagePhoto.rotation}deg)`
+                        });
+                    }
+                });
+            }
+
+            this.saveToLocalStorage();
+            this.hideModal();
+            this.showNotification('Настройки применены', 'success');
+        },
+
+        saveToLocalStorage: function () {
+            const stateToSave = {
                 albumWidth: this.state.albumWidth,
                 albumHeight: this.state.albumHeight,
-                photos: this.state.photos.map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    size: p.size,
-                    rotation: p.rotation
-                })),
-                collagePhotos: this.state.collagePhotos
+                photos: this.state.photos,
+                collagePhotos: this.state.collagePhotos,
+                nextPhotoId: this.state.nextPhotoId,
+                scale: this.state.scale,
+                screenDiagonal: this.config.defaultDiagonal
             };
-
-            // Отправляем данные на сервер
-            $.ajax({
-                url: 'api/save-project.php',
-                method: 'POST',
-                data: {project: JSON.stringify(projectData)},
-                success: (response) => {
-                    this.showNotification('Проект сохранен', 'success');
-                },
-                error: () => {
-                    this.showNotification('Ошибка сохранения проекта', 'error');
-                }
-            });
+            localStorage.setItem('photoAlbumState', JSON.stringify(stateToSave));
         },
 
-        // Показ уведомлений
+        loadFromLocalStorage: function () {
+            const savedState = localStorage.getItem('photoAlbumState');
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    this.state.albumWidth = state.albumWidth || 30;
+                    this.state.albumHeight = state.albumHeight || 20;
+                    this.state.photos = state.photos || [];
+                    this.state.collagePhotos = state.collagePhotos || [];
+                    this.state.nextPhotoId = state.nextPhotoId || 1;
+                    this.state.scale = typeof state.scale === 'number' ? state.scale : 1.0;
+
+                    // Загружаем диагональ экрана если она сохранена
+                    if (typeof state.screenDiagonal === 'number') {
+                        this.config.defaultDiagonal = state.screenDiagonal;
+                        this.elements.screenDiagonal.val(state.screenDiagonal);
+                    }
+
+                    // Восстанавливаем UI
+                    this.elements.albumWidth.val(this.state.albumWidth);
+                    this.elements.albumHeight.val(this.state.albumHeight);
+
+                    // Восстанавливаем фотографии в галерее
+                    this.state.photos.forEach(photo => {
+                        this.renderPhoto(photo);
+                    });
+
+                    // Восстанавливаем фотографии в коллаже универсально
+                    if (this.state.collagePhotos) {
+                        this.state.collagePhotos.forEach(collagePhoto => {
+                            const photo = this.state.photos.find(p => p.id === collagePhoto.photoId);
+                            if (photo) {
+                                this.renderCollagePhoto(collagePhoto, photo);
+                            }
+                        });
+                    }
+
+                    // Восстанавливаем состояние сетки - всегда включена
+                    this.elements.canvasLeft.addClass('show-grid');
+                    this.elements.canvasRight.addClass('show-grid');
+
+                    this.updateCanvasSize();
+                    this.updatePhotoCount();
+                } catch (e) {
+                    console.error('Ошибка загрузки из localStorage:', e);
+                }
+            }
+        },
+
         showNotification: function (message, type = 'info') {
             const $notification = $(`
                 <div class="notification notification--${type} animate-slide-up">
@@ -546,7 +860,201 @@ $(document).ready(function () {
                     $(this).remove();
                 });
             }, 3000);
+        },
+
+        // Заглушка autoScaleAlbum: функция оставлена для обратной совместимости, теперь не выполняет масштабирования
+        autoScaleAlbum: function () {
+            // Масштабирование теперь реализовано через aspect-ratio и CSS, логика здесь больше не нужна.
+        },
+
+        // Проверяем, нужно ли перенести фото между страницами (canvas)
+        checkPhotoPageTransfer: function ($collagePhoto, collagePhoto) {
+            // Получаем контейнер книги
+            const $book = $('.album-spread__book');
+            if (!$book.length) return;
+
+            // Определяем ширину одной страницы
+            const bookWidth = $book.width();
+            const pageWidth = bookWidth / 2; // каждая страница 50% ширины книги
+
+            // Получаем текущие координаты фото относительно его canvas
+            const currentLeft = $collagePhoto.position().left;
+            const photoWidth = $collagePhoto.width();
+
+            // Определяем абсолютную позицию центра фото в системе координат книги
+            let absoluteCenterX;
+            const inLeftCanvas = $collagePhoto.parent().hasClass('j-canvas-left');
+
+            if (inLeftCanvas) {
+                // Если фото в левом canvas, его центр = currentLeft + половина ширины фото
+                absoluteCenterX = currentLeft + photoWidth / 2;
+            } else {
+                // Если фото в правом canvas, добавляем ширину левой страницы
+                absoluteCenterX = pageWidth + currentLeft + photoWidth / 2;
+            }
+
+            // Проверяем, не пересек ли центр фото границу между страницами
+            let newPage = collagePhoto.page;
+            let needTransfer = false;
+
+            if (absoluteCenterX < pageWidth && collagePhoto.page === 'right') {
+                newPage = 'left';
+                needTransfer = true;
+            } else if (absoluteCenterX >= pageWidth && collagePhoto.page === 'left') {
+                newPage = 'right';
+                needTransfer = true;
+            }
+
+            if (needTransfer) {
+                // Вычисляем новые координаты в целевом canvas
+                let newX;
+                if (newPage === 'left') {
+                    newX = absoluteCenterX - photoWidth / 2;
+                } else {
+                    newX = absoluteCenterX - pageWidth - photoWidth / 2;
+                }
+
+                // Обновляем состояние
+                collagePhoto.page = newPage;
+                collagePhoto.x = newX;
+
+                // Перемещаем в новый canvas
+                const newCanvas = newPage === 'left' ? this.elements.canvasLeft : this.elements.canvasRight;
+                $collagePhoto.appendTo(newCanvas);
+                $collagePhoto.attr('data-page', newPage);
+                $collagePhoto.css({
+                    left: newX + 'px'
+                });
+
+                this.saveToLocalStorage();
+
+                console.log('Photo transferred to', newPage, 'page at', newX, 'px');
+            }
+        },
+
+        // LocalStorage функционал
+
+        // Функция для вычисления реального пикселей на сантиметр с учетом физического экрана
+        updatePixelsPerCm: function () {
+            let pixelsPerCm = 37.8; // fallback значение (96 DPI)
+
+            try {
+                // Расчет на основе пользовательской диагонали экрана
+                const diagonalInInches = this.config.defaultDiagonal;
+                const diagonal = diagonalInInches * 2.54; // переводим дюймы в см
+                const {width, height} = screen;
+                const sidesRatio = width / height;
+                const physicalWidth = Math.sqrt(diagonal ** 2 / (1 + sidesRatio ** 2)) * sidesRatio;
+                const physicalHeight = Math.sqrt(diagonal ** 2 / (1 + sidesRatio ** 2));
+                const calculatedPixelsPerCm = height / physicalHeight;
+
+                if (calculatedPixelsPerCm > 0 && !isNaN(calculatedPixelsPerCm)) {
+                    pixelsPerCm = calculatedPixelsPerCm;
+                    console.log(`Физический размер экрана: ${physicalWidth.toFixed(2)} x ${physicalHeight.toFixed(2)} см`);
+                    console.log(`Разрешение экрана: ${width} x ${height} пикселей`);
+                }
+
+            } catch (e) {
+                console.warn('Не удалось вычислить точный размер пикселя, используется значение по умолчанию');
+            }
+
+            this.config.pixelsPerCm = pixelsPerCm;
+
+            // Обновляем CSS переменную для калибровочного квадрата
+            document.documentElement.style.setProperty('--pixels-per-cm', pixelsPerCm + 'px');
+
+            // Показываем пользователю актуальное значение (если есть соответствующий элемент)
+            if (this.elements.pixelsPerCmValue && this.elements.pixelsPerCmValue.length) {
+                this.elements.pixelsPerCmValue.text(pixelsPerCm.toFixed(2));
+            }
+
+            // Добавляем анимацию обновления калибровочного квадрата
+            const $calibrationSquare = $('.calibration-square');
+            if ($calibrationSquare.length) {
+                $calibrationSquare.addClass('updating');
+                setTimeout(() => {
+                    $calibrationSquare.removeClass('updating');
+                }, 600);
+            }
+
+            console.log(`Пикселей на сантиметр: ${pixelsPerCm.toFixed(2)}`);
+        },
+
+        // Функция для установки нового масштаба
+        setScale: function (newScale) {
+            // Ограничения масштаба: от 0.5x до 3x
+            if (newScale < 0.5) newScale = 0.5;
+            if (newScale > 3.0) newScale = 3.0;
+
+            // Устанавливаем новый масштаб
+            this.state.scale = newScale;
+
+            // Применяем масштабирование ко всему альбому
+            this.updateCanvasSize();
+
+            // Сохраняем в localStorage
+            this.saveToLocalStorage();
+        },
+
+        // Функция автоматического подбора масштаба для оптимального отображения
+        autoFitScale: function () {
+            const $albumSpread = $('.album-spread');
+            if (!$albumSpread.length) return;
+
+            // Получаем размеры контейнера с учетом padding и отступов background
+            const containerWidth = $albumSpread.width() - 120 - 32; // padding + отступы background (1rem * 2)
+            const containerHeight = $albumSpread.height() - 120 - 16; // padding + вертикальные отступы background (0.5rem * 2)
+
+            // Вычисляем размеры альбома в пикселях (без масштаба)
+            const albumWidth = this.state.albumWidth * this.config.pixelsPerCm * 2; // две страницы
+            const albumHeight = this.state.albumHeight * this.config.pixelsPerCm;
+
+            // Вычисляем коэффициенты масштабирования для ширины и высоты
+            const scaleX = containerWidth / albumWidth;
+            const scaleY = containerHeight / albumHeight;
+
+            // Выбираем меньший коэффициент, чтобы альбом полностью помещался
+            // Ограничиваем минимальный масштаб 0.1 и максимальный 2.0 (увеличиваем лимит)
+            const optimalScale = Math.max(0.1, Math.min(scaleX, scaleY, 2.0));
+
+            // Применяем оптимальный масштаб
+            this.setScale(optimalScale);
+
+            // Показываем уведомление о подгонке
+            this.showNotification(`Масштаб подогнан: ${(optimalScale * 100).toFixed(0)}%`, 'info');
+        },
+
+        // Функция для тестирования расчетов (для отладки)
+        testCalibration: function (diagonalInches) {
+            console.log('=== ТЕСТ КАЛИБРОВКИ ЭКРАНА ===');
+            const diagonal = diagonalInches * 2.54; // в см
+            const {width, height} = screen;
+            const sidesRatio = width / height;
+            const physicalWidth = Math.sqrt(diagonal ** 2 / (1 + sidesRatio ** 2)) * sidesRatio;
+            const physicalHeight = Math.sqrt(diagonal ** 2 / (1 + sidesRatio ** 2));
+            const pixelsPerCm = height / physicalHeight;
+
+            console.log(`Диагональ: ${diagonalInches}" (${diagonal.toFixed(2)} см)`);
+            console.log(`Разрешение экрана: ${width} x ${height}`);
+            console.log(`Соотношение сторон: ${sidesRatio.toFixed(3)}`);
+            console.log(`Физический размер: ${physicalWidth.toFixed(2)} x ${physicalHeight.toFixed(2)} см`);
+            console.log(`Пикселей на см: ${pixelsPerCm.toFixed(2)}`);
+
+            // Тест для А4
+            const a4Width = 21; // см  
+            const a4Height = 29.7; // см
+            const a4PixelWidth = a4Width * pixelsPerCm;
+            const a4PixelHeight = a4Height * pixelsPerCm;
+
+            console.log(`--- А4 (${a4Width} x ${a4Height} см) ---`);
+            console.log(`А4 в пикселях: ${a4PixelWidth.toFixed(0)} x ${a4PixelHeight.toFixed(0)}`);
+            console.log(`А4 разворот: ${(a4PixelWidth * 2).toFixed(0)} x ${a4PixelHeight.toFixed(0)}`);
+            console.log('===============================');
+
+            return pixelsPerCm;
         }
+
+
     };
 
     // Инициализация приложения
@@ -554,4 +1062,28 @@ $(document).ready(function () {
 
     // Экспорт для использования в других модулях
     window.CollageApp = app;
+
+    // Экспортируем тестовую функцию для отладки
+    window.testCalibration = app.testCalibration.bind(app);
+
+    // Тестовая функция для A4
+    window.testA4 = function () {
+        console.log('=== ТЕСТ A4 ФОРМАТА ===');
+        app.setAlbumSize(21, 29.7);
+        app.updatePresetButtons($('.j-preset[data-width="21"]'));
+        console.log('A4 установлен: 21×29.7 см');
+        console.log('Соотношение сторон:', (21 / 29.7).toFixed(3), '(должно быть меньше 1 - альбом вертикальный)');
+        console.log('=======================');
+    };
+
+    // Тестовая функция для широкого формата (проверка горизонтальной прокрутки)
+    window.testWideFormat = function () {
+        console.log('=== ТЕСТ ШИРОКОГО ФОРМАТА ===');
+        app.setAlbumSize(50, 20); // Очень широкий формат
+        app.updatePresetButtons();
+        console.log('Широкий формат установлен: 50×20 см');
+        console.log('Должна появиться горизонтальная прокрутка');
+        console.log('Проверьте, что можно доскролить до левого края');
+        console.log('=============================');
+    };
 });

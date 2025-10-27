@@ -130,7 +130,7 @@ $(document).ready(function () {
             }
 
             // Обновляем фотографии в коллаже
-            this.updateCollagePhotos();
+            this.updateCollagePhotos(this.currentPhoto);
 
             // Обновляем информацию в галерее
             this.updatePhotoGalleryInfo();
@@ -142,54 +142,69 @@ $(document).ready(function () {
             window.CollageApp.showNotification('Настройки фотографии применены', 'success');
         },
 
-        // Обновление фотографий в коллаже
-        updateCollagePhotos: function () {
-            const photo = this.currentPhoto;
+        // Обновление фотографий в коллаже после изменения настроек
+        updateCollagePhotos: function (photo) {
+            if (!window.CollageApp || !window.CollageApp.state.collagePhotos) return;
 
-            // Находим все экземпляры этой фотографии в коллаже
             window.CollageApp.state.collagePhotos.forEach(collagePhoto => {
                 if (collagePhoto.photoId === photo.id) {
-                    const newSize = this.getPhotoPixelSize(photo);
-
-                    // Обновляем размер и поворот
-                    collagePhoto.width = newSize.width;
-                    collagePhoto.height = newSize.height;
-                    collagePhoto.rotation = photo.rotation;
-
-                    // Обновляем DOM элемент
-                    const $element = $(`.collage-photo[data-collage-id="${collagePhoto.id}"]`);
-                    if ($element.length) {
-                        $element.css({
-                            width: newSize.width + 'px',
-                            height: newSize.height + 'px',
-                            transform: `rotate(${photo.rotation}deg)`
-                        });
-
-                        // Обновляем draggable и resizable
-                        if ($element.hasClass('ui-draggable')) {
-                            $element.draggable('destroy');
-                        }
-                        if ($element.hasClass('ui-resizable')) {
-                            $element.resizable('destroy');
-                        }
-
-                        // Переинициализируем draggable и resizable
-                        $element.draggable({
-                            containment: 'parent',
-                            drag: (event, ui) => {
-                                window.CollageApp.updateCollagePhotoPosition(collagePhoto.id, ui.position.left, ui.position.top);
-                            }
-                        }).resizable({
-                            aspectRatio: false,
-                            minWidth: 50,
-                            minHeight: 50,
-                            resize: (event, ui) => {
-                                window.CollageApp.updateCollagePhotoSize(collagePhoto.id, ui.size.width, ui.size.height);
-                            }
-                        });
-                    }
+                    this.updateCollagePhotoElement(collagePhoto, photo,
+                        collagePhoto.page === 'left' ? window.CollageApp.elements.canvasLeft : window.CollageApp.elements.canvasRight);
                 }
             });
+        },
+
+        updateCollagePhotoElement: function (collagePhoto, photo, $canvas) {
+            const newSize = this.getPhotoPixelSize(photo);
+
+            // Обновляем размер и поворот
+            collagePhoto.width = newSize.width;
+            collagePhoto.height = newSize.height;
+            collagePhoto.rotation = photo.rotation;
+
+            // Обновляем DOM элемент
+            const $element = $(`.collage-photo[data-collage-id="${collagePhoto.id}"]`, $canvas);
+            if ($element.length) {
+                $element.css({
+                    width: newSize.width + 'px',
+                    height: newSize.height + 'px',
+                    transform: `rotate(${photo.rotation}deg)`
+                });
+
+                // Обновляем draggable и resizable
+                if ($element.hasClass('ui-draggable')) {
+                    $element.draggable('destroy');
+                }
+                if ($element.hasClass('ui-resizable')) {
+                    $element.resizable('destroy');
+                }
+
+                // Определяем какую страницу обновляем
+                const isLeft = $canvas.hasClass('j-canvas-left');
+
+                // Переинициализируем draggable и resizable
+                $element.draggable({
+                    containment: 'parent',
+                    drag: (event, ui) => {
+                        if (isLeft) {
+                            window.CollageApp.updateCollagePhotoPositionLeft(collagePhoto.id, ui.position.left, ui.position.top);
+                        } else {
+                            window.CollageApp.updateCollagePhotoPositionRight(collagePhoto.id, ui.position.left, ui.position.top);
+                        }
+                    }
+                }).resizable({
+                    aspectRatio: false,
+                    minWidth: 50,
+                    minHeight: 50,
+                    resize: (event, ui) => {
+                        if (isLeft) {
+                            window.CollageApp.updateCollagePhotoSizeLeft(collagePhoto.id, ui.size.width, ui.size.height);
+                        } else {
+                            window.CollageApp.updateCollagePhotoSizeRight(collagePhoto.id, ui.size.width, ui.size.height);
+                        }
+                    }
+                });
+            }
         },
 
         // Обновление информации в галерее фотографий
@@ -247,7 +262,7 @@ $(document).ready(function () {
 
             // Обновляем коллаж и галерею
             this.currentPhoto = photo;
-            this.updateCollagePhotos();
+            this.updateCollagePhotos(this.currentPhoto);
             this.updatePhotoGalleryInfo();
 
             window.CollageApp.showNotification('Настройки фотографии сброшены', 'info');
@@ -264,8 +279,8 @@ $(document).ready(function () {
                 height: pixelSize.height / window.CollageApp.config.pixelsPerCm
             };
 
-            // Подсчитываем сколько раз используется в коллаже
-            const usageCount = window.CollageApp.state.collagePhotos.filter(cp => cp.photoId === photoId).length;
+            // Используем новую функцию для подсчета использования фотографии
+            const usageCount = this.getPhotoUsageCount(photoId);
 
             return {
                 originalSize: {
@@ -291,6 +306,15 @@ $(document).ready(function () {
             return stats.printSize.width <= albumWidth && stats.printSize.height <= albumHeight;
         },
 
+        // Подсчет количества использований фотографии в коллаже
+        getPhotoUsageCount: function (photoId) {
+            let usageCount = 0;
+            if (window.CollageApp.state.collagePhotos && Array.isArray(window.CollageApp.state.collagePhotos)) {
+                usageCount = window.CollageApp.state.collagePhotos.filter(cp => cp.photoId === photoId).length;
+            }
+            return usageCount;
+        },
+
         // Автоматический подбор оптимального размера для альбома
         autoSizeForAlbum: function (photoId) {
             const photo = window.CollageApp.state.photos.find(p => p.id === photoId);
@@ -314,7 +338,7 @@ $(document).ready(function () {
             photo.size = bestSize;
 
             this.currentPhoto = photo;
-            this.updateCollagePhotos();
+            this.updateCollagePhotos(this.currentPhoto);
             this.updatePhotoGalleryInfo();
 
             window.CollageApp.showNotification(`Размер фотографии установлен: ${bestSize}`, 'success');

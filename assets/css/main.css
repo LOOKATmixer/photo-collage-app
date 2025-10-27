@@ -1,3 +1,4 @@
+
 /* CSS переменные */
 :root {
     /* Основные цвета */
@@ -60,6 +61,12 @@
     --transition-fast: 0.2s ease;
     --transition-normal: 0.3s ease;
     --transition-slow: 0.5s ease;
+
+    /* Альбом */
+    --page-aspect-ratio: 1.5; /* Соотношение сторон страницы альбома по умолчанию (30x20) */
+
+    /* Калибровка экрана - базовое значение, будет обновляться через JavaScript */
+    --pixels-per-cm: 37.8px;
 }
 
 /* Глобальные стили */
@@ -70,10 +77,11 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     line-height: 1.6;
     color: var(--color-text-primary);
     background-color: var(--color-bg-primary);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
 /* Страница */
@@ -84,7 +92,7 @@ body {
 }
 
 .page__container {
-    max-width: 1400px;
+    max-width: 1920px;
     margin: 0 auto;
     padding: 0 20px;
     width: 100%;
@@ -104,12 +112,14 @@ body {
 
 .header__title {
     font-size: 2.5rem;
-    font-weight: 300;
+    font-weight: 700;
     margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
 }
 
 .header__subtitle {
     font-size: 1.1rem;
+    font-weight: 400;
     opacity: 0.9;
 }
 
@@ -120,8 +130,8 @@ body {
 }
 
 .main__container {
-    display: grid;
-    grid-template-columns: 400px 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 2rem;
     align-items: start;
 }
@@ -136,20 +146,41 @@ body {
     top: 2rem;
 }
 
+.settings--horizontal {
+    position: static;
+    margin-bottom: 2rem;
+}
+
 .settings__container {
     padding: 1.5rem;
 }
 
+.settings__container--horizontal {
+    padding: 1.5rem 2rem;
+}
+
 .settings__title {
     font-size: 1.5rem;
+    font-weight: 700;
     color: var(--color-gray-800);
     margin-bottom: 1.5rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid var(--color-gray-100);
+    letter-spacing: -0.01em;
+}
+
+.settings__content {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
 }
 
 .settings__section {
     margin-bottom: 2rem;
+}
+
+.settings__section--inline {
+    margin-bottom: 0;
 }
 
 .settings__section:last-child {
@@ -158,9 +189,15 @@ body {
 
 .settings__section-title {
     font-size: 1.2rem;
+    font-weight: 600;
     color: var(--color-text-muted);
     margin-bottom: 1rem;
-    font-weight: 500;
+}
+
+.photo-upload {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
 }
 
 /* Размеры альбома */
@@ -205,7 +242,9 @@ body {
     cursor: pointer;
     transition: all var(--transition-normal);
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
+    font-family: inherit;
+    letter-spacing: -0.01em;
 }
 
 .album-size__preset:hover {
@@ -219,6 +258,168 @@ body {
     border-color: var(--color-primary);
 }
 
+/* Album scale controls */
+.album-scale {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-gray-200);
+}
+
+.album-scale__controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.album-scale__button {
+    padding: 0.5rem;
+    background: var(--color-white);
+    border: 2px solid var(--color-gray-300);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: var(--color-gray-600);
+}
+
+.album-scale__button:hover {
+    background: var(--color-primary);
+    color: var(--color-white);
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.album-scale__button:active {
+    transform: translateY(0);
+}
+
+.album-scale__button--active {
+    background: var(--color-primary) !important;
+    color: var(--color-white) !important;
+    border-color: var(--color-primary) !important;
+    box-shadow: var(--shadow-sm);
+}
+
+.album-scale__value {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    min-width: 50px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+/* Screen calibration controls */
+.screen-calibration {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-gray-200);
+}
+
+.screen-calibration__group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.screen-calibration__label {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    min-width: 120px;
+}
+
+.screen-calibration__input {
+    width: 60px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.85rem;
+}
+
+.screen-calibration__input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.screen-calibration__button {
+    padding: 0.25rem;
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: var(--color-gray-600);
+}
+
+.screen-calibration__button:hover {
+    background: var(--color-primary);
+    color: var(--color-white);
+    border-color: var(--color-primary);
+}
+
+.screen-calibration__info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: var(--color-gray-50);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--color-gray-200);
+}
+
+.screen-calibration__value {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+/* Horizontal album size layout */
+.album-size--horizontal {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.album-size__inputs {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.album-size--horizontal .album-size__group {
+    margin-bottom: 0;
+}
+
+.album-size--horizontal .album-size__label {
+    font-size: 0.9rem;
+}
+
+.album-size--horizontal .album-size__input {
+    width: 80px;
+}
+
+.album-size--horizontal .album-size__presets {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0;
+}
+
 /* Рабочая область */
 .workspace {
     background: var(--color-bg-secondary);
@@ -227,48 +428,355 @@ body {
     overflow: hidden;
 }
 
+.workspace--fullwidth {
+    width: 100%;
+}
+
 .workspace__container {
     padding: 1.5rem;
 }
 
-.workspace__title {
-    font-size: 1.5rem;
-    color: var(--color-gray-800);
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.5rem;
+/* Workspace header */
+.workspace__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
     border-bottom: 2px solid var(--color-gray-100);
 }
 
-/* Коллаж */
-.collage {
-    margin-bottom: 1.5rem;
+.workspace__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-gray-800);
+    margin: 0;
+    letter-spacing: -0.01em;
 }
 
-.collage__canvas {
-    min-height: 400px;
-    background: var(--color-gray-50);
-    border: 2px dashed var(--color-gray-200);
-    border-radius: var(--border-radius-lg);
+.workspace__controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Album spread - 100% width with auto-scaling */
+.album-spread {
+    width: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: var(--border-radius-xl);
+    padding: 3rem 2rem;
     position: relative;
-    overflow: hidden;
-    margin-bottom: 1rem;
-    background-image: var(--gradient-checkerboard);
-    background-size: 20px 20px;
-    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    overflow: auto; /* Разрешаем скролл */
+    /* Создаем единую рабочую зону для drag&drop */
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Плавная прокрутка */
+    scroll-behavior: smooth;
+
+    /* Красивый скролл */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
+/* Кастомные скроллбары для WebKit браузеров */
+.album-spread::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.album-spread::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+}
+
+.album-spread::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.album-spread::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+    background-clip: padding-box;
+}
+
+.album-spread::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Состояние когда нужен скролл */
+.album-spread.has-scroll {
+    cursor: grab;
+}
+
+.album-spread.has-scroll:active {
+    cursor: grabbing;
+}
+
+/* Добавляем подсказку для скролла */
+.album-spread.has-scroll::after {
+    content: "🖱️ Используйте прокрутку для навигации";
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius-md);
+    font-size: 0.8rem;
+    z-index: 10;
+    animation: fadeInOut 4s ease-in-out;
+    pointer-events: none;
+}
+
+/* Дополнительная индикация для горизонтальной прокрутки */
+.album-spread.has-scroll::before {
+    content: "← →";
+    position: absolute;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius-md);
+    font-size: 1.2rem;
+    z-index: 10;
+    animation: fadeInOut 6s ease-in-out 2s;
+    pointer-events: none;
+    font-weight: bold;
+}
+
+@keyframes fadeInOut {
+    0%, 20% {
+        opacity: 1;
+    }
+    80%, 100% {
+        opacity: 0;
+    }
+}
+
+.album-spread__background {
+    /* Убираем фиксированные размеры, делаем контейнер адаптивным */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    /* Минимальные размеры равны размеру контейнера */
+    min-width: 100%;
+    min-height: 100%;
+    /* Добавляем отступы для прокрутки - вертикальные и горизонтальные */
+    padding: 0.5rem 1rem;
+}
+
+.album-spread__shadow {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.3) 0%, transparent 70%);
+    z-index: 0;
+    /* Тень всегда покрывает весь фон */
+    min-width: 100%;
+    min-height: 100%;
+}
+
+.album-spread__book {
+    display: flex;
+    position: relative;
+    z-index: 1;
+    /* Размер теперь устанавливается через JavaScript в пикселях строго по сантиметрам */
+    /* Высота будет определяться пропорционально */
+    transform-origin: center center;
+    /* Убираем ограничения размера */
+    /* Книга может быть больше контейнера - тогда появится скролл */
+    flex-shrink: 0; /* Не сжимаем книгу */
+}
+
+/* Pages */
+.album-spread__page {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(to bottom, #fafafa 0%, #f0f0f0 100%);
+    position: relative;
+    padding: 20px;
+    /* Позволяем drop событиям проходить через границы страниц */
+    pointer-events: auto;
+    /* Высота будет определяться соотношением сторон альбома */
+    aspect-ratio: var(--page-aspect-ratio, 1.5);
+}
+
+.album-spread__page--left {
+    padding-right: 30px;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.3),
+    inset 10px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.album-spread__page--left::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 30px;
+    background: linear-gradient(to right,
+    transparent 0%,
+    rgba(0, 0, 0, 0.05) 50%,
+    rgba(0, 0, 0, 0.15) 100%);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.album-spread__page--right {
+    padding-left: 30px;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.3),
+    inset -10px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.album-spread__page--right::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 30px;
+    background: linear-gradient(to left,
+    transparent 0%,
+    rgba(0, 0, 0, 0.05) 50%,
+    rgba(0, 0, 0, 0.15) 100%);
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* Page inner container */
+.album-spread__page-inner {
+    width: 100%;
+    height: 100%;
+    background: white;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2),
+    inset 0 0 1px rgba(0, 0, 0, 0.1);
+    position: relative;
+    border-radius: 2px;
+}
+
+/* Paper texture overlay */
+.album-spread__page-inner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 0, 0, 0.01) 2px,
+            rgba(0, 0, 0, 0.01) 4px
+    ),
+    repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 0, 0, 0.01) 2px,
+            rgba(0, 0, 0, 0.01) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Canvas inside pages */
+.album-spread__page .collage__canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    /* Размер определяется родительским контейнером */
+    /* Позволяем перетаскивание между канвасами */
+    overflow: visible;
+}
+
+/* Сантиметровая сетка - активируется через JavaScript */
+.collage__canvas.show-grid {
+    /* Сетка сантиметров на основе calibration-square */
+    background-image: /* Основная сетка каждый сантиметр */ repeating-linear-gradient(
+            to right,
+            rgba(102, 126, 234, 0.2) 0px,
+            rgba(102, 126, 234, 0.2) 1px,
+            transparent 1px,
+            transparent var(--pixels-per-cm, 37.8px)
+        ),
+        repeating-linear-gradient(
+            to bottom,
+            rgba(102, 126, 234, 0.2) 0px,
+            rgba(102, 126, 234, 0.2) 1px,
+            transparent 1px,
+            transparent var(--pixels-per-cm, 37.8px)
+        ),
+            /* Усиленная сетка каждые 5 сантиметров */
+        repeating-linear-gradient(
+            to right,
+            rgba(102, 126, 234, 0.4) 0px,
+            rgba(102, 126, 234, 0.4) 2px,
+            transparent 2px,
+            transparent calc(var(--pixels-per-cm, 37.8px) * 5)
+        ),
+        repeating-linear-gradient(
+            to bottom,
+            rgba(102, 126, 234, 0.4) 0px,
+            rgba(102, 126, 234, 0.4) 2px,
+            transparent 2px,
+            transparent calc(var(--pixels-per-cm, 37.8px) * 5)
+        );
+    background-size: var(--pixels-per-cm, 37.8px) 100%,
+    100% var(--pixels-per-cm, 37.8px),
+    calc(var(--pixels-per-cm, 37.8px) * 5) 100%,
+    100% calc(var(--pixels-per-cm, 37.8px) * 5);
+    background-position: 0 0, 0 0, 0 0, 0 0;
+    background-repeat: repeat, repeat, repeat, repeat;
+}
+
+.album-spread__page .collage__canvas::before,
+.album-spread__page .collage__canvas::after {
+    display: none;
+}
+
+/* Dragover состояние для канвасов */
+.collage__canvas.is-dragover {
+    background: rgba(102, 126, 234, 0.1) !important;
+    box-shadow: inset 0 0 20px rgba(102, 126, 234, 0.3);
+}
+
+/* Объединенная рабочая зона для drag&drop - теперь следует за альбомом */
+
+/* Collage info */
 .collage__info {
     display: flex;
     gap: 2rem;
-    font-size: 0.9rem;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 500;
     color: var(--color-text-secondary);
+    margin-top: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    letter-spacing: -0.01em;
 }
 
 /* Действия */
 .actions {
     display: flex;
     gap: 1rem;
+    justify-content: center;
     flex-wrap: wrap;
+    margin: 2rem auto;
 }
 
 .actions__button {
@@ -277,12 +785,14 @@ body {
     border-radius: var(--border-radius-md);
     cursor: pointer;
     font-size: 1rem;
-    font-weight: 500;
+    font-weight: 600;
+    font-family: inherit;
     transition: all var(--transition-normal);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    letter-spacing: -0.01em;
 }
 
 .actions__button--primary {
@@ -294,6 +804,17 @@ body {
     background: var(--color-primary-dark);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.actions__button--preview {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: var(--color-white);
+}
+
+.actions__button--preview:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6a4290);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .actions__button--secondary {
@@ -318,10 +839,21 @@ body {
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
 }
 
+.actions__button--danger {
+    background: var(--color-danger);
+    color: var(--color-white);
+}
+
+.actions__button--danger:hover {
+    background: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
 /* Адаптивность */
 @media (max-width: 1024px) {
     .main__container {
-        grid-template-columns: 1fr;
+        flex-direction: column;
     }
 
     .settings {
@@ -342,6 +874,56 @@ body {
         padding: 1.5rem 0;
     }
 
+    .settings__content {
+        grid-template-columns: 1fr;
+    }
+
+    .album-size--horizontal {
+        flex-direction: column;
+    }
+
+    .album-size__inputs {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .album-size--horizontal .album-size__input {
+        width: 100%;
+    }
+
+    .workspace__header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+
+    .album-spread {
+        padding: 1.5rem 1rem;
+        /* На мобильных устройствах используем нативный скролл */
+        -webkit-overflow-scrolling: touch;
+        /* Улучшаем прокрутку на мобильных */
+        scroll-behavior: smooth;
+    }
+
+    .album-spread__page {
+        padding: 10px;
+    }
+
+    .album-spread__page--left {
+        padding-right: 15px;
+    }
+
+    .album-spread__page--right {
+        padding-left: 15px;
+    }
+
+
+    .collage__info {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+
     .actions {
         flex-direction: column;
     }
@@ -350,4 +932,113 @@ body {
         width: 100%;
         justify-content: center;
     }
+}
+
+/* Calibration Square - точный квадрат 1см x 1см */
+.calibration-square {
+    width: var(--pixels-per-cm, 37.8px);
+    height: var(--pixels-per-cm, 37.8px);
+    border: 2px solid var(--color-primary);
+    background: transparent;
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius-sm);
+    transition: all var(--transition-normal);
+
+    /* Добавляем дополнительные визуальные элементы */
+    background-image: /* Внутренние линии для точности */ linear-gradient(to right, var(--color-primary) 0px, var(--color-primary) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-primary) 0px, var(--color-primary) 1px, transparent 1px),
+        /* Центральные перекрестия */ linear-gradient(to right, transparent calc(50% - 0.5px), var(--color-primary) calc(50% - 0.5px), var(--color-primary) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom, transparent calc(50% - 0.5px), var(--color-primary) calc(50% - 0.5px), var(--color-primary) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+    background-size: 25% 100%,
+    100% 25%,
+    100% 100%,
+    100% 100%;
+    background-position: 25% 0,
+    0 25%,
+    0 0,
+    0 0;
+    background-repeat: no-repeat;
+}
+
+.calibration-square::before {
+    content: "1см";
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    white-space: nowrap;
+    text-align: center;
+    background: var(--color-white);
+    padding: 1px 4px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--color-primary);
+    line-height: 1;
+}
+
+.calibration-square::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    border: 1px dashed rgba(102, 126, 234, 0.3);
+    border-radius: var(--border-radius-sm);
+    pointer-events: none;
+}
+
+/* Hover эффект для интерактивности */
+.calibration-square:hover {
+    border-color: var(--color-primary-dark);
+    box-shadow: 0 0 8px rgba(102, 126, 234, 0.4);
+    transform: scale(1.05);
+}
+
+/* Анимация обновления калибровки */
+.calibration-square.updating {
+    animation: calibrationUpdate 0.6s ease-in-out;
+}
+
+@keyframes calibrationUpdate {
+    0%, 100% {
+        transform: scale(1);
+        border-color: var(--color-primary);
+    }
+    25% {
+        transform: scale(0.95);
+        border-color: var(--color-warning);
+    }
+    50% {
+        transform: scale(1.1);
+        border-color: var(--color-success);
+    }
+    75% {
+        transform: scale(0.98);
+        border-color: var(--color-primary-dark);
+    }
+}
+
+/* Дополнительная информация о калибровке */
+.calibration-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+.calibration-info__hint {
+    font-style: italic;
+    color: var(--color-gray-500);
+    max-width: 200px;
+    line-height: 1.2;
 }
