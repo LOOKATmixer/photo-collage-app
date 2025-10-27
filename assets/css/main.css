@@ -1,0 +1,353 @@
+/* CSS переменные */
+:root {
+    /* Основные цвета */
+    --color-primary: #667eea;
+    --color-primary-dark: #5a6fd8;
+    --color-primary-light: rgba(102, 126, 234, 0.1);
+    --color-secondary: #764ba2;
+
+    /* Цвета состояний */
+    --color-success: #28a745;
+    --color-success-dark: #218838;
+    --color-warning: #ffc107;
+    --color-danger: #dc3545;
+    --color-info: #17a2b8;
+
+    /* Нейтральные цвета */
+    --color-white: #ffffff;
+    --color-black: #000000;
+    --color-gray-50: #f8f9fa;
+    --color-gray-100: #e9ecef;
+    --color-gray-200: #dee2e6;
+    --color-gray-300: #ced4da;
+    --color-gray-400: #adb5bd;
+    --color-gray-500: #6c757d;
+    --color-gray-600: #495057;
+    --color-gray-700: #343a40;
+    --color-gray-800: #2c3e50;
+    --color-gray-900: #212529;
+
+    /* Цвета текста */
+    --color-text-primary: #333333;
+    --color-text-secondary: #6c757d;
+    --color-text-muted: #495057;
+
+    /* Цвета фона */
+    --color-bg-primary: #f8f9fa;
+    --color-bg-secondary: #ffffff;
+    --color-bg-dark: #2c3e50;
+
+    /* Тени */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 8px 25px rgba(0, 0, 0, 0.15);
+
+    /* Градиенты */
+    --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    --gradient-checkerboard: linear-gradient(45deg, var(--color-gray-100) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-gray-100) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-gray-100) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-gray-100) 75%);
+
+    /* Размеры */
+    --border-radius-sm: 4px;
+    --border-radius-md: 6px;
+    --border-radius-lg: 8px;
+    --border-radius-xl: 12px;
+
+    /* Переходы */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}
+
+/* Глобальные стили */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-primary);
+}
+
+/* Страница */
+.page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.page__container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+    width: 100%;
+}
+
+/* Заголовок */
+.header {
+    background: var(--gradient-primary);
+    color: var(--color-white);
+    padding: 2rem 0;
+    box-shadow: var(--shadow-md);
+}
+
+.header__container {
+    text-align: center;
+}
+
+.header__title {
+    font-size: 2.5rem;
+    font-weight: 300;
+    margin-bottom: 0.5rem;
+}
+
+.header__subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+/* Основной контент */
+.main {
+    flex: 1;
+    padding: 2rem 0;
+}
+
+.main__container {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+/* Настройки */
+.settings {
+    background: var(--color-bg-secondary);
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    position: sticky;
+    top: 2rem;
+}
+
+.settings__container {
+    padding: 1.5rem;
+}
+
+.settings__title {
+    font-size: 1.5rem;
+    color: var(--color-gray-800);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-gray-100);
+}
+
+.settings__section {
+    margin-bottom: 2rem;
+}
+
+.settings__section:last-child {
+    margin-bottom: 0;
+}
+
+.settings__section-title {
+    font-size: 1.2rem;
+    color: var(--color-text-muted);
+    margin-bottom: 1rem;
+    font-weight: 500;
+}
+
+/* Размеры альбома */
+.album-size__group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.album-size__label {
+    width: 120px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+
+.album-size__input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 2px solid var(--color-gray-100);
+    border-radius: var(--border-radius-md);
+    font-size: 1rem;
+    transition: border-color var(--transition-normal);
+}
+
+.album-size__input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.album-size__presets {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.album-size__preset {
+    padding: 0.5rem 1rem;
+    background: var(--color-gray-50);
+    border: 2px solid var(--color-gray-100);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.album-size__preset:hover {
+    background: var(--color-gray-100);
+    border-color: var(--color-primary);
+}
+
+.album-size__preset.is-active {
+    background: var(--color-primary);
+    color: var(--color-white);
+    border-color: var(--color-primary);
+}
+
+/* Рабочая область */
+.workspace {
+    background: var(--color-bg-secondary);
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.workspace__container {
+    padding: 1.5rem;
+}
+
+.workspace__title {
+    font-size: 1.5rem;
+    color: var(--color-gray-800);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-gray-100);
+}
+
+/* Коллаж */
+.collage {
+    margin-bottom: 1.5rem;
+}
+
+.collage__canvas {
+    min-height: 400px;
+    background: var(--color-gray-50);
+    border: 2px dashed var(--color-gray-200);
+    border-radius: var(--border-radius-lg);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    background-image: var(--gradient-checkerboard);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.collage__info {
+    display: flex;
+    gap: 2rem;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+/* Действия */
+.actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.actions__button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all var(--transition-normal);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.actions__button--primary {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.actions__button--primary:hover {
+    background: var(--color-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.actions__button--secondary {
+    background: var(--color-gray-500);
+    color: var(--color-white);
+}
+
+.actions__button--secondary:hover {
+    background: var(--color-gray-600);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.actions__button--success {
+    background: var(--color-success);
+    color: var(--color-white);
+}
+
+.actions__button--success:hover {
+    background: var(--color-success-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+/* Адаптивность */
+@media (max-width: 1024px) {
+    .main__container {
+        grid-template-columns: 1fr;
+    }
+
+    .settings {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .page__container {
+        padding: 0 15px;
+    }
+
+    .header__title {
+        font-size: 2rem;
+    }
+
+    .main {
+        padding: 1.5rem 0;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .actions__button {
+        width: 100%;
+        justify-content: center;
+    }
+}

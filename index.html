@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Фотоальбом-коллаж</title>
+    <link rel="stylesheet" href="plugins/font-awesome/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+</head>
+<body class="page">
+<div class="page__container">
+    <!-- Заголовок -->
+    <header class="header">
+        <div class="header__container">
+            <h1 class="header__title">Создание фотоальбома-коллажа</h1>
+            <p class="header__subtitle">Настройте размеры альбома, добавьте фотографии и создайте уникальный коллаж</p>
+        </div>
+    </header>
+
+    <!-- Основной контент -->
+    <main class="main">
+        <div class="main__container">
+            <!-- Панель настроек -->
+            <section class="settings">
+                <div class="settings__container">
+                    <h2 class="settings__title">Настройки альбома</h2>
+
+                    <!-- Размеры альбома -->
+                    <div class="settings__section">
+                        <h3 class="settings__section-title">Размеры альбома</h3>
+                        <div class="album-size">
+                            <div class="album-size__group">
+                                <label class="album-size__label">Ширина (см):</label>
+                                <input type="number" class="album-size__input j-album-width" min="10" max="50"
+                                       value="30" step="0.5">
+                            </div>
+                            <div class="album-size__group">
+                                <label class="album-size__label">Высота (см):</label>
+                                <input type="number" class="album-size__input j-album-height" min="10" max="50"
+                                       value="20" step="0.5">
+                            </div>
+                            <div class="album-size__presets">
+                                <button class="album-size__preset j-preset" data-width="21" data-height="29.7">A4
+                                </button>
+                                <button class="album-size__preset j-preset" data-width="30" data-height="20">30x20
+                                </button>
+                                <button class="album-size__preset j-preset" data-width="25" data-height="25">25x25
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Загрузка фотографий -->
+                    <div class="settings__section">
+                        <h3 class="settings__section-title">Фотографии</h3>
+                        <div class="photo-upload">
+                            <div class="photo-upload__dropzone j-dropzone">
+                                <div class="photo-upload__content">
+                                    <div class="photo-upload__icon"><i class="fas fa-camera fa-3x"></i></div>
+                                    <p class="photo-upload__text">Перетащите фотографии сюда или нажмите для выбора</p>
+                                    <input type="file" class="photo-upload__input j-file-input" multiple
+                                           accept="image/*">
+                                </div>
+                            </div>
+                            <div class="photo-upload__gallery j-photo-gallery">
+                                <!-- Сюда будут добавляться загруженные фотографии -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Рабочая область коллажа -->
+            <section class="workspace">
+                <div class="workspace__container">
+                    <h2 class="workspace__title">Предварительный просмотр</h2>
+                    <div class="collage j-collage">
+                        <div class="collage__canvas j-canvas">
+                            <!-- Сюда будут добавляться фотографии для коллажа -->
+                        </div>
+                        <div class="collage__info j-info">
+                            <p class="collage__size">Размер: <span class="j-current-size">30x20 см</span></p>
+                            <p class="collage__photos">Фотографий: <span class="j-photo-count">0</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Панель действий -->
+                    <div class="actions">
+                        <button class="actions__button actions__button--primary j-generate-layout">
+                            <i class="fas fa-magic"></i> Автоматическая расстановка
+                        </button>
+                        <button class="actions__button actions__button--secondary j-clear-all">
+                            <i class="fas fa-trash"></i> Очистить все
+                        </button>
+                        <button class="actions__button actions__button--success j-save-project">
+                            <i class="fas fa-save"></i> Сохранить проект
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Модальные окна -->
+    <div class="modal j-modal" id="photo-settings-modal">
+        <div class="modal__overlay j-modal-overlay"></div>
+        <div class="modal__content">
+            <div class="modal__header">
+                <h3 class="modal__title">Настройки фотографии</h3>
+                <button class="modal__close j-modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal__body">
+                <div class="photo-settings">
+                    <div class="photo-settings__group">
+                        <label class="photo-settings__label">Размер:</label>
+                        <select class="photo-settings__select j-photo-size">
+                            <option value="small">Маленький (5x7 см)</option>
+                            <option value="medium" selected>Средний (10x15 см)</option>
+                            <option value="large">Большой (15x20 см)</option>
+                            <option value="custom">Свой размер</option>
+                        </select>
+                    </div>
+                    <div class="photo-settings__group j-custom-size" style="display: none;">
+                        <label class="photo-settings__label">Ширина (см):</label>
+                        <input type="number" class="photo-settings__input j-custom-width" min="1" max="30" step="0.1">
+                        <label class="photo-settings__label">Высота (см):</label>
+                        <input type="number" class="photo-settings__input j-custom-height" min="1" max="30" step="0.1">
+                    </div>
+                    <div class="photo-settings__group">
+                        <label class="photo-settings__label">Поворот:</label>
+                        <input type="range" class="photo-settings__range j-rotation" min="-180" max="180" value="0"
+                               step="1">
+                        <span class="photo-settings__value j-rotation-value">0°</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal__footer">
+                <button class="modal__button modal__button--primary j-apply-settings">
+                    <i class="fas fa-check"></i> Применить
+                </button>
+                <button class="modal__button modal__button--secondary j-modal-close">
+                    <i class="fas fa-times"></i> Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Подключение скриптов -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/photo-manager.js"></script>
+<script src="assets/js/collage-builder.js"></script>
+</body>
+</html>

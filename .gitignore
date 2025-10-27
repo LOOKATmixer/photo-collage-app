@@ -1,0 +1,57 @@
+# Операционная система
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Логи
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Загруженные файлы (временно исключаем для демо)
+uploads/photos/*
+uploads/projects/*
+uploads/temp/*
+!uploads/photos/.gitkeep
+!uploads/projects/.gitkeep  
+!uploads/temp/.gitkeep
+
+# Зависимости
+node_modules/
+vendor/
+
+# Временные файлы
+*.tmp
+*.temp
+.cache/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# PHP
+composer.phar
+composer.lock
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Production build
+/dist
+/build

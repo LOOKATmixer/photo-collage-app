@@ -1,0 +1,74 @@
+RewriteEngine On
+
+# Главная страница по умолчанию
+DirectoryIndex index.html
+
+# Разрешаем доступ к API
+<Directory "api">
+    Order allow,deny
+    Allow from all
+</Directory>
+
+# Разрешаем доступ к загруженным файлам
+<Directory "uploads">
+    Order allow,deny
+    Allow from all
+    
+    # Разрешаем только изображения и JSON файлы
+    <Files ~ "\.(jpg|jpeg|png|gif|webp|json)$">
+        Allow from all
+    </Files>
+    
+    # Запрещаем выполнение PHP файлов в uploads
+    <Files ~ "\.php$">
+        Order allow,deny
+        Deny from all
+    </Files>
+</Directory>
+
+# Защищаем конфигурационные файлы
+<Files "config.php">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Защищаем логи
+<Directory "logs">
+    Order allow,deny
+    Deny from all
+</Directory>
+
+# Кэширование статических файлов
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+</IfModule>
+
+# Сжатие
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+</IfModule>
+
+# Безопасность
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Скрытие версии сервера
+ServerTokens Prod

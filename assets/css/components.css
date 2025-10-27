@@ -1,0 +1,589 @@
+/* Загрузка фотографий */
+.photo-upload__dropzone {
+    border: 2px dashed var(--color-gray-200);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    background: var(--color-gray-50);
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.photo-upload__dropzone:hover {
+    border-color: var(--color-primary);
+    background: #f0f4ff;
+}
+
+.photo-upload__dropzone.is-dragover {
+    border-color: var(--color-primary);
+    background: #e8f0ff;
+    transform: scale(1.02);
+}
+
+.photo-upload__content {
+    pointer-events: none;
+}
+
+.photo-upload__icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.6;
+    color: var(--color-text-secondary);
+}
+
+.photo-upload__text {
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.photo-upload__input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* Галерея фотографий */
+.photo-upload__gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.5rem;
+}
+
+.photo-item {
+    position: relative;
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+    background: var(--color-bg-secondary);
+    box-shadow: var(--shadow-sm);
+    cursor: grab;
+    transition: all var(--transition-normal);
+}
+
+.photo-item:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-xl);
+}
+
+.photo-item.is-dragging {
+    cursor: grabbing;
+    opacity: 0.8;
+    transform: rotate(5deg);
+}
+
+.photo-item__image {
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    display: block;
+}
+
+.photo-item__controls {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.photo-item:hover .photo-item__controls {
+    opacity: 1;
+}
+
+.photo-item__control {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    color: var(--color-white);
+}
+
+.photo-item__control--settings {
+    background: rgba(102, 126, 234, 0.9);
+}
+
+.photo-item__control--settings:hover {
+    background: var(--color-primary);
+}
+
+.photo-item__control--delete {
+    background: rgba(220, 53, 69, 0.9);
+}
+
+.photo-item__control--delete:hover {
+    background: var(--color-danger);
+}
+
+.photo-item__info {
+    padding: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    text-align: center;
+    background: rgba(248, 249, 250, 0.95);
+}
+
+/* Фотографии в коллаже */
+.collage-photo {
+    position: absolute;
+    border: 2px solid var(--color-white);
+    box-shadow: var(--shadow-sm);
+    cursor: move;
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+    user-select: none;
+    transition: all var(--transition-fast);
+}
+
+.collage-photo:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.collage-photo.is-selected {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.collage-photo.is-dragging {
+    opacity: 0.8;
+    transform: rotate(2deg);
+    z-index: 100;
+}
+
+.collage-photo__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+}
+
+.collage-photo__controls {
+    position: absolute;
+    top: -30px;
+    right: 0;
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: all var(--transition-normal);
+    z-index: 20;
+}
+
+.collage-photo:hover .collage-photo__controls {
+    opacity: 1;
+}
+
+.collage-photo__control {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    color: var(--color-white);
+}
+
+.collage-photo__control--rotate {
+    background: rgba(40, 167, 69, 0.9);
+}
+
+.collage-photo__control--rotate:hover {
+    background: var(--color-success);
+}
+
+.collage-photo__control--settings {
+    background: rgba(102, 126, 234, 0.9);
+}
+
+.collage-photo__control--settings:hover {
+    background: var(--color-primary);
+}
+
+.collage-photo__control--delete {
+    background: rgba(220, 53, 69, 0.9);
+}
+
+.collage-photo__control--delete:hover {
+    background: var(--color-danger);
+}
+
+/* Модальные окна */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: none;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.modal.is-visible {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+}
+
+.modal__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal__content {
+    position: relative;
+    background: var(--color-bg-secondary);
+    border-radius: var(--border-radius-xl);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    transform: scale(0.9);
+    transition: transform var(--transition-normal);
+}
+
+.modal.is-visible .modal__content {
+    transform: scale(1);
+}
+
+.modal__header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--color-gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal__title {
+    font-size: 1.25rem;
+    color: var(--color-gray-800);
+    margin: 0;
+}
+
+.modal__close {
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.modal__close:hover {
+    background: var(--color-gray-50);
+    color: var(--color-text-muted);
+}
+
+.modal__body {
+    padding: 1.5rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal__footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--color-gray-100);
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.modal__button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all var(--transition-normal);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal__button--primary {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.modal__button--primary:hover {
+    background: var(--color-primary-dark);
+}
+
+.modal__button--secondary {
+    background: var(--color-gray-50);
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-gray-200);
+}
+
+.modal__button--secondary:hover {
+    background: var(--color-gray-100);
+}
+
+/* Настройки фотографии */
+.photo-settings__group {
+    margin-bottom: 1.5rem;
+}
+
+.photo-settings__group:last-child {
+    margin-bottom: 0;
+}
+
+.photo-settings__label {
+    display: block;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.photo-settings__select,
+.photo-settings__input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid var(--color-gray-100);
+    border-radius: var(--border-radius-md);
+    font-size: 1rem;
+    transition: border-color var(--transition-normal);
+}
+
+.photo-settings__select:focus,
+.photo-settings__input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.photo-settings__range {
+    width: 100%;
+    margin: 0.5rem 0;
+}
+
+.photo-settings__value {
+    display: inline-block;
+    min-width: 40px;
+    text-align: center;
+    font-weight: 500;
+    color: var(--color-primary);
+}
+
+/* Анимации */
+@keyframes slideInUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.animate-slide-up {
+    animation: slideInUp 0.3s ease-out;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Состояние загрузки */
+.is-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.is-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--color-gray-50);
+    border-top: 2px solid var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Перетаскивание */
+.ui-draggable-dragging {
+    z-index: 1000 !important;
+}
+
+.ui-resizable-handle {
+    background: var(--color-primary);
+    border: 1px solid var(--color-white);
+    border-radius: var(--border-radius-sm);
+}
+
+.ui-resizable-se {
+    width: 12px;
+    height: 12px;
+    right: -6px;
+    bottom: -6px;
+}
+
+/* Пустое состояние */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--color-text-secondary);
+}
+
+.empty-state__icon {
+    font-size: 4rem;
+    opacity: 0.3;
+    margin-bottom: 1rem;
+    color: var(--color-text-secondary);
+}
+
+.empty-state__text {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state__subtext {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* Уведомления */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius-md);
+    color: var(--color-white);
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    z-index: 2000;
+    max-width: 400px;
+    word-wrap: break-word;
+}
+
+.notification--info {
+    background: var(--color-info);
+}
+
+.notification--success {
+    background: var(--color-success);
+}
+
+.notification--warning {
+    background: var(--color-warning);
+    color: var(--color-gray-900);
+}
+
+.notification--error {
+    background: var(--color-danger);
+}
+
+/* Настройки коллажа */
+.collage-settings__group {
+    margin-bottom: 1.5rem;
+}
+
+.collage-settings__group:last-child {
+    margin-bottom: 0;
+}
+
+.collage-settings__label {
+    display: block;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.collage-settings__select,
+.collage-settings__input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid var(--color-gray-100);
+    border-radius: var(--border-radius-md);
+    font-size: 1rem;
+    transition: border-color var(--transition-normal);
+}
+
+.collage-settings__select:focus,
+.collage-settings__input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.collage-settings__checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.collage-settings__checkbox input[type="checkbox"] {
+    margin-right: 0.5rem;
+    transform: scale(1.2);
+}
