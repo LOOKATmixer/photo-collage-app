@@ -667,6 +667,7 @@ $(document).ready(function () {
         checkScrollNeeded: function () {
             const $albumSpread = $('.album-spread');
             const $book = $('.album-spread__book');
+            const $background = $('.album-spread__background');
 
             if (!$albumSpread.length || !$book.length) return;
 
@@ -681,13 +682,26 @@ $(document).ready(function () {
             const horizontalPadding = 32; // 1rem * 2 стороны = 32px
             const verticalPadding = 16; // 0.5rem * 2 стороны = 16px
 
+            // Проверяем нужен ли скролл
+            const needsHorizontalScroll = bookWidth > (containerWidth - horizontalPadding);
+            const needsVerticalScroll = bookHeight > (containerHeight - verticalPadding);
+
             // Добавляем класс если нужен скролл
-            if (bookWidth > (containerWidth - horizontalPadding) || bookHeight > (containerHeight - verticalPadding)) {
+            if (needsHorizontalScroll || needsVerticalScroll) {
                 $albumSpread.addClass('has-scroll');
-                // Можно опционально также показать уведомление, если хотим всплывашку:
-                // this.showNotification('Альбом больше области — для навигации используйте скроллирование мышью', 'info');
             } else {
                 $albumSpread.removeClass('has-scroll');
+            }
+
+            // Управляем позиционированием альбома
+            if (needsHorizontalScroll) {
+                // Если нужна горизонтальная прокрутка - выравниваем по левому краю
+                $background.css('justify-content', 'flex-start');
+                $book.css('margin', '0'); // Убираем auto margin
+            } else {
+                // Если альбом помещается - центрируем его
+                $background.css('justify-content', 'center');
+                $book.css('margin', '0 auto'); // Добавляем auto margin для центрирования
             }
         },
 
