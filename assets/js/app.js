@@ -23,6 +23,93 @@ $(document).ready(function () {
             defaultDiagonal: 24 // Диагональ экрана по умолчанию в дюймах
         },
 
+        // Переинициализация draggable элементов в коллаже
+        reinitializeDraggables: function () {
+            // Применяем для всех collage-photo в обоих canvas
+            const canvasLeft = this.elements.canvasLeft;
+            const canvasRight = this.elements.canvasRight;
+
+            $('.collage-photo', canvasLeft).each((index, elem) => {
+                try {
+                    // destroy old draggable/resizable to avoid stacking handlers
+                    if ($(elem).data('ui-draggable')) {
+                        $(elem).draggable('destroy');
+                    }
+                    if ($(elem).data('ui-resizable')) {
+                        $(elem).resizable('destroy');
+                    }
+                } catch (e) {
+                }
+
+                // Получаем collageId
+                const collageId = $(elem).data('collage-id');
+                // Получаем collagePhoto объект
+                const collagePhoto = this.state.collagePhotos.find(p => p.id === collageId);
+                if (!collagePhoto) return;
+
+                $(elem).draggable({
+                    containment: 'parent',
+                    start: (event, ui) => {
+                        $(elem).addClass('is-dragging');
+                    },
+                    drag: (event, ui) => {
+                        this.updateCollagePhotoPosition(collagePhoto.id, ui.position.left, ui.position.top);
+                        this.saveToLocalStorage();
+                    },
+                    stop: (event, ui) => {
+                        $(elem).removeClass('is-dragging');
+                        this.checkPhotoPageTransfer($(elem), collagePhoto);
+                    }
+                }).resizable({
+                    aspectRatio: false,
+                    minWidth: 50,
+                    minHeight: 50,
+                    resize: (event, ui) => {
+                        this.updateCollagePhotoSize(collagePhoto.id, ui.size.width, ui.size.height);
+                        this.saveToLocalStorage();
+                    }
+                });
+            });
+
+            $('.collage-photo', canvasRight).each((index, elem) => {
+                try {
+                    if ($(elem).data('ui-draggable')) {
+                        $(elem).draggable('destroy');
+                    }
+                    if ($(elem).data('ui-resizable')) {
+                        $(elem).resizable('destroy');
+                    }
+                } catch (e) {
+                }
+                const collageId = $(elem).data('collage-id');
+                const collagePhoto = this.state.collagePhotos.find(p => p.id === collageId);
+                if (!collagePhoto) return;
+
+                $(elem).draggable({
+                    containment: 'parent',
+                    start: (event, ui) => {
+                        $(elem).addClass('is-dragging');
+                    },
+                    drag: (event, ui) => {
+                        this.updateCollagePhotoPosition(collagePhoto.id, ui.position.left, ui.position.top);
+                        this.saveToLocalStorage();
+                    },
+                    stop: (event, ui) => {
+                        $(elem).removeClass('is-dragging');
+                        this.checkPhotoPageTransfer($(elem), collagePhoto);
+                    }
+                }).resizable({
+                    aspectRatio: false,
+                    minWidth: 50,
+                    minHeight: 50,
+                    resize: (event, ui) => {
+                        this.updateCollagePhotoSize(collagePhoto.id, ui.size.width, ui.size.height);
+                        this.saveToLocalStorage();
+                    }
+                });
+            });
+        },
+
         // Состояние приложения
         state: {
             albumWidth: 30,
@@ -558,6 +645,23 @@ $(document).ready(function () {
             if (collagePhoto) {
                 collagePhoto.width = width;
                 collagePhoto.height = height;
+
+                // Также обновляем размер в основном объекте photo для консистентности
+                const photo = this.state.photos.find(p => p.id === collagePhoto.photoId);
+                if (photo) {
+                    // Вычисляем размер в сантиметрах
+                    const widthCm = width / this.config.pixelsPerCm;
+                    const heightCm = height / this.config.pixelsPerCm;
+
+                    // Устанавливаем custom размер
+                    photo.size = 'custom';
+                    photo.customWidth = widthCm;
+                    photo.customHeight = heightCm;
+                    this.config.defaultPhotoSizes['custom'] = {
+                        width: widthCm,
+                        height: heightCm
+                    };
+                }
             }
         },
 
@@ -654,6 +758,9 @@ $(document).ready(function () {
             // Применяем визуальное масштабирование ко всему альбому
             $book.css('transform', `scale(${this.state.scale})`);
             $book.css('transform-origin', 'center center');
+
+            // Переинициализируем draggable элементы после изменения размеров
+            this.reinitializeDraggables();
 
             // Обновляем информацию о размере
             this.elements.currentSize.text(`${this.state.albumWidth}x${this.state.albumHeight} см`);
@@ -761,11 +868,17 @@ $(document).ready(function () {
             const newSize = this.elements.photoSize.val();
             photo.size = newSize;
 
-            // Если выбран custom, добавляем или обновляем размер
+            // Если выбран custom, сохраняем размеры в самой фотографии
             if (newSize === 'custom') {
                 const width = parseFloat(this.elements.customWidth.val());
                 const height = parseFloat(this.elements.customHeight.val());
+                photo.customWidth = width;
+                photo.customHeight = height;
                 this.config.defaultPhotoSizes['custom'] = {width, height};
+            } else {
+                // Удаляем пользовательские размеры если выбран стандартный размер
+                delete photo.customWidth;
+                delete photo.customHeight;
             }
 
             // Обновляем поворот
@@ -775,7 +888,13 @@ $(document).ready(function () {
             if (this.state.collagePhotos) {
                 this.state.collagePhotos.forEach(collagePhoto => {
                     if (collagePhoto.photoId === photo.id) {
-                        const size = this.config.defaultPhotoSizes[photo.size];
+                        let size;
+                        if (photo.size === 'custom' && photo.customWidth && photo.customHeight) {
+                            size = {width: photo.customWidth, height: photo.customHeight};
+                        } else {
+                            size = this.config.defaultPhotoSizes[photo.size];
+                        }
+
                         collagePhoto.width = size.width * this.config.pixelsPerCm;
                         collagePhoto.height = size.height * this.config.pixelsPerCm;
                         collagePhoto.rotation = photo.rotation;
@@ -788,6 +907,42 @@ $(document).ready(function () {
                             width: collagePhoto.width + 'px',
                             height: collagePhoto.height + 'px',
                             transform: `rotate(${collagePhoto.rotation}deg)`
+                        });
+
+                        // Переинициализируем draggable/resizable для этого элемента
+                        try {
+                            if ($element.data('ui-draggable')) {
+                                $element.draggable('destroy');
+                            }
+                            if ($element.data('ui-resizable')) {
+                                $element.resizable('destroy');
+                            }
+                        } catch (e) {
+                            console.warn('Ошибка при уничтожении UI элементов:', e);
+                        }
+
+                        // Заново инициализируем draggable/resizable
+                        $element.draggable({
+                            containment: 'parent',
+                            start: (event, ui) => {
+                                $element.addClass('is-dragging');
+                            },
+                            drag: (event, ui) => {
+                                this.updateCollagePhotoPosition(collagePhoto.id, ui.position.left, ui.position.top);
+                                this.saveToLocalStorage();
+                            },
+                            stop: (event, ui) => {
+                                $element.removeClass('is-dragging');
+                                this.checkPhotoPageTransfer($element, collagePhoto);
+                            }
+                        }).resizable({
+                            aspectRatio: false,
+                            minWidth: 50,
+                            minHeight: 50,
+                            resize: (event, ui) => {
+                                this.updateCollagePhotoSize(collagePhoto.id, ui.size.width, ui.size.height);
+                                this.saveToLocalStorage();
+                            }
                         });
                     }
                 });
@@ -802,11 +957,29 @@ $(document).ready(function () {
             const stateToSave = {
                 albumWidth: this.state.albumWidth,
                 albumHeight: this.state.albumHeight,
-                photos: this.state.photos,
+                photos: this.state.photos.map(photo => ({
+                    id: photo.id,
+                    name: photo.name,
+                    originalWidth: photo.originalWidth,
+                    originalHeight: photo.originalHeight,
+                    size: photo.size,
+                    rotation: photo.rotation,
+                    customWidth: photo.customWidth,
+                    customHeight: photo.customHeight,
+                    src: photo.src,
+                    file: photo.file
+                        ? {
+                            name: photo.file.name,
+                            size: photo.file.size,
+                            type: photo.file.type
+                        }
+                        : undefined
+                })),
                 collagePhotos: this.state.collagePhotos,
                 nextPhotoId: this.state.nextPhotoId,
                 scale: this.state.scale,
-                screenDiagonal: this.config.defaultDiagonal
+                screenDiagonal: this.config.defaultDiagonal,
+                customPhotoSizes: this.config.defaultPhotoSizes // Сохраняем пользовательские размеры
             };
             localStorage.setItem('photoAlbumState', JSON.stringify(stateToSave));
         },
@@ -818,7 +991,6 @@ $(document).ready(function () {
                     const state = JSON.parse(savedState);
                     this.state.albumWidth = state.albumWidth || 30;
                     this.state.albumHeight = state.albumHeight || 20;
-                    this.state.photos = state.photos || [];
                     this.state.collagePhotos = state.collagePhotos || [];
                     this.state.nextPhotoId = state.nextPhotoId || 1;
                     this.state.scale = typeof state.scale === 'number' ? state.scale : 1.0;
@@ -827,6 +999,46 @@ $(document).ready(function () {
                     if (typeof state.screenDiagonal === 'number') {
                         this.config.defaultDiagonal = state.screenDiagonal;
                         this.elements.screenDiagonal.val(state.screenDiagonal);
+                    }
+
+                    // Восстанавливаем пользовательские размеры фотографий
+                    if (state.customPhotoSizes && typeof state.customPhotoSizes === 'object') {
+                        this.config.defaultPhotoSizes = {...this.config.defaultPhotoSizes, ...state.customPhotoSizes};
+                    }
+
+                    // Восстанавливаем фотографии с полными данными
+                    this.state.photos = [];
+                    if (state.photos && Array.isArray(state.photos)) {
+                        state.photos.forEach(savedPhoto => {
+                            // Создаем базовый объект фотографии
+                            const photo = {
+                                id: savedPhoto.id,
+                                name: savedPhoto.name,
+                                originalWidth: savedPhoto.originalWidth,
+                                originalHeight: savedPhoto.originalHeight,
+                                size: savedPhoto.size || '10x15',
+                                rotation: savedPhoto.rotation || 0,
+                                src: savedPhoto.src
+                            };
+
+                            // Восстанавливаем пользовательские размеры если они есть
+                            if (savedPhoto.customWidth && savedPhoto.customHeight) {
+                                photo.customWidth = savedPhoto.customWidth;
+                                photo.customHeight = savedPhoto.customHeight;
+                            }
+
+                            // Создаем объект File из сохраненных данных
+                            if (savedPhoto.file) {
+                                // Создаем пустой File объект с базовыми свойствами
+                                photo.file = {
+                                    name: savedPhoto.file.name,
+                                    size: savedPhoto.file.size,
+                                    type: savedPhoto.file.type
+                                };
+                            }
+
+                            this.state.photos.push(photo);
+                        });
                     }
 
                     // Восстанавливаем UI
@@ -854,6 +1066,11 @@ $(document).ready(function () {
 
                     this.updateCanvasSize();
                     this.updatePhotoCount();
+
+                    // Переинициализируем draggables после загрузки состояния
+                    setTimeout(() => {
+                        this.reinitializeDraggables();
+                    }, 100); // Небольшая задержка для завершения рендеринга
                 } catch (e) {
                     console.error('Ошибка загрузки из localStorage:', e);
                 }
@@ -1006,6 +1223,9 @@ $(document).ready(function () {
             // Применяем масштабирование ко всему альбому
             this.updateCanvasSize();
 
+            // Переинициализируем draggables после изменения масштаба
+            this.reinitializeDraggables();
+
             // Сохраняем в localStorage
             this.saveToLocalStorage();
         },
@@ -1099,5 +1319,63 @@ $(document).ready(function () {
         console.log('Должна появиться горизонтальная прокрутка');
         console.log('Проверьте, что можно доскролить до левого края');
         console.log('=============================');
+    };
+
+    // Тестовая функция для проверки draggables
+    window.testDraggables = function () {
+        console.log('=== ТЕСТ ПЕРЕТАСКИВАНИЯ ===');
+        console.log('Фотографий в коллаже:', app.state.collagePhotos.length);
+        console.log('Переинициализация draggables...');
+        app.reinitializeDraggables();
+
+        // Проверяем наличие jQuery UI классов
+        const leftPhotos = $('.collage-photo', app.elements.canvasLeft).length;
+        const rightPhotos = $('.collage-photo', app.elements.canvasRight).length;
+        const draggablePhotos = $('.collage-photo.ui-draggable').length;
+        const resizablePhotos = $('.collage-photo.ui-resizable').length;
+
+        console.log(`Фото в левом канвасе: ${leftPhotos}`);
+        console.log(`Фото в правом канвасе: ${rightPhotos}`);
+        console.log(`Draggable фото: ${draggablePhotos}`);
+        console.log(`Resizable фото: ${resizablePhotos}`);
+        console.log('==============================');
+    };
+
+    // Глобальная функция для принудительной переинициализации draggables
+    window.fixDraggables = function () {
+        console.log('🔧 Принудительная переинициализация draggables...');
+        app.reinitializeDraggables();
+        console.log('✅ Готово! Попробуйте перетащить фотографии.');
+    };
+
+    // Функция для диагностики размеров фотографий
+    window.debugPhotoSizes = function () {
+        console.log('=== ДИАГНОСТИКА РАЗМЕРОВ ФОТОГРАФИЙ ===');
+        console.log('Доступные размеры:', app.config.defaultPhotoSizes);
+        console.log('Фотографии в галерее:');
+        app.state.photos.forEach(photo => {
+            console.log(`  ${photo.name}: размер ${photo.size}, поворот ${photo.rotation}°`);
+        });
+        console.log('Фотографии в коллаже:');
+        app.state.collagePhotos.forEach(collagePhoto => {
+            const photo = app.state.photos.find(p => p.id === collagePhoto.photoId);
+            console.log(`  ${photo ? photo.name : 'Unknown'}: ${collagePhoto.width}x${collagePhoto.height}px, страница ${collagePhoto.page}`);
+        });
+        console.log('========================================');
+    };
+
+    // Универсальная функция для исправления всех проблем
+    window.fixAll = function () {
+        console.log('🔧 ПОЛНОЕ ИСПРАВЛЕНИЕ...');
+        console.log('1. Переинициализация draggables...');
+        app.reinitializeDraggables();
+
+        console.log('2. Обновление размеров альбома...');
+        app.updateCanvasSize();
+
+        console.log('3. Сохранение состояния...');
+        app.saveToLocalStorage();
+
+        console.log('✅ Все исправлено! Попробуйте перетащить и изменить размер фотографий.');
     };
 });

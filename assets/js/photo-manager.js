@@ -68,9 +68,16 @@ $(document).ready(function () {
 
             if (photo.size === 'custom') {
                 this.elements.customSize.show();
-                const size = this.getPhotoPixelSize(photo);
-                this.elements.customWidth.val((size.width / window.CollageApp.config.pixelsPerCm).toFixed(1));
-                this.elements.customHeight.val((size.height / window.CollageApp.config.pixelsPerCm).toFixed(1));
+                if (photo.customWidth && photo.customHeight) {
+                    // Используем размеры из самой фотографии
+                    this.elements.customWidth.val(photo.customWidth);
+                    this.elements.customHeight.val(photo.customHeight);
+                } else {
+                    // Fallback на размер из пикселей
+                    const size = this.getPhotoPixelSize(photo);
+                    this.elements.customWidth.val((size.width / window.CollageApp.config.pixelsPerCm).toFixed(1));
+                    this.elements.customHeight.val((size.height / window.CollageApp.config.pixelsPerCm).toFixed(1));
+                }
             } else {
                 this.elements.customSize.hide();
             }
@@ -93,7 +100,7 @@ $(document).ready(function () {
 
         // Получение размера фотографии в пикселях
         getPhotoPixelSize: function (photo) {
-            if (photo.customWidth && photo.customHeight) {
+            if (photo.size === 'custom' && photo.customWidth && photo.customHeight) {
                 return {
                     width: photo.customWidth * window.CollageApp.config.pixelsPerCm,
                     height: photo.customHeight * window.CollageApp.config.pixelsPerCm
@@ -179,29 +186,27 @@ $(document).ready(function () {
                     $element.resizable('destroy');
                 }
 
-                // Определяем какую страницу обновляем
-                const isLeft = $canvas.hasClass('j-canvas-left');
-
                 // Переинициализируем draggable и resizable
                 $element.draggable({
                     containment: 'parent',
+                    start: (event, ui) => {
+                        $element.addClass('is-dragging');
+                    },
                     drag: (event, ui) => {
-                        if (isLeft) {
-                            window.CollageApp.updateCollagePhotoPositionLeft(collagePhoto.id, ui.position.left, ui.position.top);
-                        } else {
-                            window.CollageApp.updateCollagePhotoPositionRight(collagePhoto.id, ui.position.left, ui.position.top);
-                        }
+                        window.CollageApp.updateCollagePhotoPosition(collagePhoto.id, ui.position.left, ui.position.top);
+                        window.CollageApp.saveToLocalStorage();
+                    },
+                    stop: (event, ui) => {
+                        $element.removeClass('is-dragging');
+                        window.CollageApp.checkPhotoPageTransfer($element, collagePhoto);
                     }
                 }).resizable({
                     aspectRatio: false,
                     minWidth: 50,
                     minHeight: 50,
                     resize: (event, ui) => {
-                        if (isLeft) {
-                            window.CollageApp.updateCollagePhotoSizeLeft(collagePhoto.id, ui.size.width, ui.size.height);
-                        } else {
-                            window.CollageApp.updateCollagePhotoSizeRight(collagePhoto.id, ui.size.width, ui.size.height);
-                        }
+                        window.CollageApp.updateCollagePhotoSize(collagePhoto.id, ui.size.width, ui.size.height);
+                        window.CollageApp.saveToLocalStorage();
                     }
                 });
             }
@@ -215,11 +220,13 @@ $(document).ready(function () {
             if ($photoItem.length) {
                 let sizeText = '';
 
-                if (photo.size === 'custom') {
+                if (photo.size === 'custom' && photo.customWidth && photo.customHeight) {
                     sizeText = `${photo.customWidth}x${photo.customHeight} см`;
                 } else {
                     const size = window.CollageApp.config.defaultPhotoSizes[photo.size];
-                    sizeText = `${size.width}x${size.height} см`;
+                    if (size) {
+                        sizeText = `${size.width}x${size.height} см`;
+                    }
                 }
 
                 // Обновляем информацию о фотографии
