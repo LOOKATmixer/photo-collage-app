@@ -150,6 +150,14 @@
     transform: rotate(5deg);
 }
 
+/* Стиль для drag-proxy элемента при touch-перетаскивании */
+.drag-proxy {
+    cursor: grabbing;
+    transform: rotate(5deg) scale(1.1);
+    border: 2px solid var(--color-primary);
+    border-radius: var(--border-radius-md);
+}
+
 .photo-item__image {
     width: 100%;
     height: 80px;
@@ -220,6 +228,13 @@
     transition: all var(--transition-fast);
     /* Улучшаем z-index управление - фото должны быть выше unified canvas */
     z-index: 10;
+    /* Добавляем поддержку touch-событий */
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 .collage-photo:hover {
@@ -230,6 +245,13 @@
 .collage-photo.is-selected {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+/* Touch-состояния для мобильных устройств */
+.collage-photo.touch-active {
+    transform: scale(1.02);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    z-index: 50;
 }
 
 
@@ -612,6 +634,60 @@
     background: var(--color-danger);
 }
 
+/* Мобильное уведомление о touch-управлении */
+.touch-help-notification {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    color: white;
+    padding: 1rem;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-xl);
+    z-index: 1500;
+    text-align: center;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    transform: translateY(100%);
+    transition: transform var(--transition-normal);
+}
+
+.touch-help-notification.show {
+    transform: translateY(0);
+}
+
+.touch-help-notification__close {
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color var(--transition-fast);
+}
+
+.touch-help-notification__close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+    .touch-help-notification {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        font-size: 0.85rem;
+    }
+}
+
 /* Настройки коллажа */
 .collage-settings__group {
     margin-bottom: 1.5rem;
@@ -752,6 +828,7 @@
     transform: rotate(2deg) scale(1.05);
     z-index: 100;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    border-color: var(--color-primary);
 }
 
 /* Улучшенные стили для перетаскивания между страницами */

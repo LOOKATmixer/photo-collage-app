@@ -47,8 +47,16 @@ $(document).ready(function () {
                 const collagePhoto = this.state.collagePhotos.find(p => p.id === collageId);
                 if (!collagePhoto) return;
 
+                // Добавляем touch-события для мобильных устройств
+                this.addTouchSupport($(elem), collagePhoto);
+
                 $(elem).draggable({
                     containment: 'parent',
+                    // Добавляем поддержку touch-событий
+                    addClasses: false,
+                    // Улучшаем производительность на мобильных
+                    refreshPositions: true,
+                    scroll: false,
                     start: (event, ui) => {
                         $(elem).addClass('is-dragging');
                     },
@@ -64,6 +72,8 @@ $(document).ready(function () {
                     aspectRatio: false,
                     minWidth: 50,
                     minHeight: 50,
+                    // Добавляем поддержку touch для resize
+                    addClasses: false,
                     resize: (event, ui) => {
                         this.updateCollagePhotoSize(collagePhoto.id, ui.size.width, ui.size.height);
                         this.saveToLocalStorage();
@@ -85,8 +95,16 @@ $(document).ready(function () {
                 const collagePhoto = this.state.collagePhotos.find(p => p.id === collageId);
                 if (!collagePhoto) return;
 
+                // Добавляем touch-события для мобильных устройств
+                this.addTouchSupport($(elem), collagePhoto);
+
                 $(elem).draggable({
                     containment: 'parent',
+                    // Добавляем поддержку touch-событий
+                    addClasses: false,
+                    // Улучшаем производительность на мобильных
+                    refreshPositions: true,
+                    scroll: false,
                     start: (event, ui) => {
                         $(elem).addClass('is-dragging');
                     },
@@ -102,11 +120,207 @@ $(document).ready(function () {
                     aspectRatio: false,
                     minWidth: 50,
                     minHeight: 50,
+                    // Добавляем поддержку touch для resize
+                    addClasses: false,
                     resize: (event, ui) => {
                         this.updateCollagePhotoSize(collagePhoto.id, ui.size.width, ui.size.height);
                         this.saveToLocalStorage();
                     }
                 });
+            });
+        },
+
+        // Добавляем поддержку touch-событий для мобильных устройств
+        addTouchSupport: function ($element, collagePhoto) {
+            const self = this;
+            let isDragging = false;
+            let startPos = {x: 0, y: 0};
+            let elementStartPos = {x: 0, y: 0};
+            let touchStartTime = 0;
+
+            // Убираем прошлые обработчики
+            $element.off('touchstart.touchdrag touchmove.touchdrag touchend.touchdrag');
+
+            $element.on('touchstart.touchdrag', (e) => {
+                e.preventDefault();
+                const touch = e.originalEvent.touches[0];
+                touchStartTime = Date.now();
+                startPos = {x: touch.clientX, y: touch.clientY};
+                elementStartPos = {
+                    x: parseFloat($element.css('left')) || 0,
+                    y: parseFloat($element.css('top')) || 0
+                };
+                isDragging = false;
+                $element.addClass('touch-active');
+            });
+
+            $element.on('touchmove.touchdrag', (e) => {
+                e.preventDefault();
+                const touch = e.originalEvent.touches[0];
+                const deltaX = touch.clientX - startPos.x;
+                const deltaY = touch.clientY - startPos.y;
+
+                // Начинаем перетаскивание только если сдвиг больше 10px
+                if (!isDragging && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
+                    isDragging = true;
+                    $element.addClass('is-dragging');
+                }
+
+                if (isDragging) {
+                    const newX = elementStartPos.x + deltaX;
+                    const newY = elementStartPos.y + deltaY;
+
+                    // Ограничиваем перемещение границами canvas
+                    const canvas = $element.parent();
+                    const maxX = canvas.width() - $element.width();
+                    const maxY = canvas.height() - $element.height();
+
+                    const constrainedX = Math.max(0, Math.min(newX, maxX));
+                    const constrainedY = Math.max(0, Math.min(newY, maxY));
+
+                    $element.css({
+                        left: constrainedX + 'px',
+                        top: constrainedY + 'px'
+                    });
+
+                    self.updateCollagePhotoPosition(collagePhoto.id, constrainedX, constrainedY);
+                }
+            });
+
+            $element.on('touchend.touchdrag', (e) => {
+                e.preventDefault();
+                $element.removeClass('touch-active');
+
+                if (isDragging) {
+                    $element.removeClass('is-dragging');
+                    self.checkPhotoPageTransfer($element, collagePhoto);
+                    self.saveToLocalStorage();
+                    isDragging = false;
+                } else {
+                    // Если это был короткий тап без перетаскивания, открываем настройки
+                    const touchDuration = Date.now() - touchStartTime;
+                    if (touchDuration < 500) {
+                        const photo = self.state.photos.find(p => p.id === collagePhoto.photoId);
+                        if (photo) {
+                            self.showPhotoSettings(photo.id);
+                        }
+                    }
+                }
+            });
+        },
+
+        // Поддержка touch-перетаскивания из галереи (drag&drop на мобильных)
+        addGalleryTouchSupport: function ($photoItem, photo) {
+            const self = this;
+            // Поддержка только на touch-устройствах
+            const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+            if (!isTouchDevice) return;
+
+            let touchDragActive = false;
+            let dragElem;
+            let origX = 0, origY = 0;
+            let offsetX = 0, offsetY = 0;
+            let touchMoved = false;
+
+            $photoItem.off('touchstart.gallerydrag touchmove.gallerydrag touchend.gallerydrag touchcancel.gallerydrag');
+
+            $photoItem.on('touchstart.gallerydrag', function (e) {
+                if (touchDragActive) return;
+
+                const touch = e.originalEvent.touches[0];
+                touchDragActive = true;
+                touchMoved = false;
+
+                origX = touch.clientX;
+                origY = touch.clientY;
+
+                // Создаем копию элемента, которую будем перемещать
+                dragElem = $photoItem.clone()
+                    .addClass('drag-proxy')
+                    .css({
+                        position: 'fixed',
+                        left: origX + 'px',
+                        top: origY + 'px',
+                        width: $photoItem.width(),
+                        height: $photoItem.height(),
+                        zIndex: 9999,
+                        pointerEvents: 'none',
+                        opacity: 0.85,
+                        boxShadow: '0 2px 16px rgba(0,0,0,0.13)'
+                    });
+                $('body').append(dragElem);
+                offsetX = $photoItem.width() / 2;
+                offsetY = $photoItem.height() / 2;
+
+                $photoItem.addClass('is-dragging');
+            });
+
+            $(document).on('touchmove.gallerydrag', function (e) {
+                if (!touchDragActive || !dragElem) return;
+                const touch = e.originalEvent.touches[0];
+
+                const moveX = touch.clientX - offsetX;
+                const moveY = touch.clientY - offsetY;
+
+                dragElem.css({
+                    left: moveX + 'px',
+                    top: moveY + 'px'
+                });
+
+                touchMoved = true;
+            });
+
+            $(document).on('touchend.gallerydrag touchcancel.gallerydrag', function (e) {
+                if (!touchDragActive) return;
+
+                $photoItem.removeClass('is-dragging');
+                if (dragElem) {
+                    dragElem.remove();
+                    dragElem = null;
+                }
+                touchDragActive = false;
+
+                // Если был drag, пробуем определить целевой canvas
+                if (touchMoved && e.originalEvent.changedTouches && e.originalEvent.changedTouches.length > 0) {
+                    const touch = e.originalEvent.changedTouches[0];
+                    const x = touch.clientX;
+                    const y = touch.clientY;
+
+                    // Проверяем, попал ли release в один из canvas
+                    let targetCanvas = null;
+                    let targetSide = null;
+
+                    const canvasLeftRect = self.elements.canvasLeft[0].getBoundingClientRect();
+                    const canvasRightRect = self.elements.canvasRight[0].getBoundingClientRect();
+
+                    if (x >= canvasLeftRect.left && x <= canvasLeftRect.right &&
+                        y >= canvasLeftRect.top && y <= canvasLeftRect.bottom) {
+                        targetCanvas = self.elements.canvasLeft;
+                        targetSide = 'left';
+                    } else if (x >= canvasRightRect.left && x <= canvasRightRect.right &&
+                        y >= canvasRightRect.top && y <= canvasRightRect.bottom) {
+                        targetCanvas = self.elements.canvasRight;
+                        targetSide = 'right';
+                    }
+
+                    if (targetCanvas && targetSide) {
+                        // Координаты внутри канваса
+                        const localX = x - targetCanvas[0].getBoundingClientRect().left;
+                        const localY = y - targetCanvas[0].getBoundingClientRect().top;
+
+                        // Добавляем фото в коллаж
+                        self.addPhotoToCollage(photo.id, localX, localY, targetSide);
+                    } else {
+                        // Не попал в canvas
+                        self.showNotification('Коснитесь и отпустите фотографию на страницу альбома', 'warning');
+                    }
+                }
+            });
+
+            // Для предотвращения утечки обработчиков (если элементы удаляются)
+            $photoItem.on('remove', function () {
+                $(document).off('touchmove.gallerydrag touchend.gallerydrag touchcancel.gallerydrag');
             });
         },
 
@@ -144,7 +358,6 @@ $(document).ready(function () {
             rotation: $('.j-rotation'),
             rotationValue: $('.j-rotation-value'),
             applySettings: $('.j-apply-settings'),
-            deletePhoto: $('.j-delete-photo'),
             customSize: $('.j-custom-size'),
             scaleUp: $('.j-scale-up'),
             scaleDown: $('.j-scale-down'),
@@ -175,6 +388,9 @@ $(document).ready(function () {
                 // При изменении размера окна можно автоматически подгонять масштаб
                 // this.autoFitScale();
             });
+
+            // Показываем уведомление о touch-управлении на мобильных устройствах
+            this.showTouchHelpIfNeeded();
 
             console.log('Приложение инициализировано');
         },
@@ -294,12 +510,6 @@ $(document).ready(function () {
                 this.applyPhotoSettings();
             });
 
-            this.elements.deletePhoto.on('click', () => {
-                if (this.state.selectedPhoto) {
-                    this.deletePhoto(this.state.selectedPhoto);
-                    this.hideModal();
-                }
-            });
 
             // Drag & drop на canvasLeft
             this.elements.canvasLeft.on('dragover', (e) => {
@@ -491,6 +701,9 @@ $(document).ready(function () {
                 $photoItem.removeClass('is-dragging');
             });
 
+            // Добавляем touch-поддержку для перетаскивания из галереи на мобильных
+            this.addGalleryTouchSupport($photoItem, photo);
+
             this.elements.photoGallery.append($photoItem);
         },
 
@@ -554,8 +767,8 @@ $(document).ready(function () {
                             transform: rotate(${collagePhoto.rotation}deg);">
                     <img src="${photo.src}" alt="${photo.name}" class="collage-photo__image">
                     <div class="collage-photo__controls">
-                        <button class="collage-photo__control collage-photo__control--rotate j-rotate" title="Повернуть"><i class="fas fa-redo"></i></button>
                         <button class="collage-photo__control collage-photo__control--settings j-settings" title="Настройки"><i class="fas fa-cog"></i></button>
+                        <button class="collage-photo__control collage-photo__control--rotate j-rotate" title="Повернуть"><i class="fas fa-redo"></i></button>
                         <button class="collage-photo__control collage-photo__control--delete j-delete" title="Убрать из коллажа"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
@@ -1091,6 +1304,66 @@ $(document).ready(function () {
                     $(this).remove();
                 });
             }, 3000);
+        },
+
+        // Показ уведомления о touch-управлении на мобильных устройствах
+        showTouchHelpIfNeeded: function () {
+            // Проверяем, является ли устройство touch-устройством
+            const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            const isMobile = window.innerWidth <= 768;
+
+            if (isTouchDevice && isMobile) {
+                // Проверяем, показывали ли уже это уведомление
+                const hasSeenTouchHelp = localStorage.getItem('touchHelpSeen');
+
+                if (!hasSeenTouchHelp) {
+                    setTimeout(() => {
+                        this.showTouchNotification();
+                    }, 2000); // Показываем через 2 секунды после загрузки
+                }
+            }
+        },
+
+        // Показать уведомление о touch-управлении
+        showTouchNotification: function () {
+            const $notification = $(`
+                <div class="touch-help-notification">
+                    <button class="touch-help-notification__close">&times;</button>
+                    <div>
+                        <strong>📱 Управление на мобильных устройствах</strong><br>
+                        • Перетаскивайте фотографии пальцем<br>
+                        • Короткое нажатие - настройки фото<br>
+                        • Используйте кнопки управления на фотографиях
+                    </div>
+                </div>
+            `);
+
+            $('body').append($notification);
+
+            // Показываем уведомление
+            setTimeout(() => {
+                $notification.addClass('show');
+            }, 100);
+
+            // Обработчик закрытия
+            $notification.find('.touch-help-notification__close').on('click', () => {
+                $notification.removeClass('show');
+                setTimeout(() => {
+                    $notification.remove();
+                }, 300);
+                localStorage.setItem('touchHelpSeen', 'true');
+            });
+
+            // Автоматически скрываем через 8 секунд
+            setTimeout(() => {
+                if ($notification.hasClass('show')) {
+                    $notification.removeClass('show');
+                    setTimeout(() => {
+                        $notification.remove();
+                    }, 300);
+                    localStorage.setItem('touchHelpSeen', 'true');
+                }
+            }, 8000);
         },
 
         // Заглушка autoScaleAlbum: функция оставлена для обратной совместимости, теперь не выполняет масштабирования

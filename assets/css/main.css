@@ -934,6 +934,65 @@ body {
         width: 100%;
         justify-content: center;
     }
+
+    /* Улучшения для touch-устройств */
+    .collage-photo {
+        /* Увеличиваем минимальный размер для удобства на мобильных */
+        min-width: 60px;
+        min-height: 60px;
+    }
+
+    .collage-photo__controls {
+        /* Увеличиваем размер кнопок на мобильных */
+        top: -35px;
+    }
+
+    .collage-photo__control {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        /* Увеличиваем область нажатия */
+        margin: 2px;
+    }
+
+    /* Модальные окна на мобильных */
+    .modal__content {
+        width: 95%;
+        margin: 20px;
+    }
+
+    .modal__button {
+        min-height: 48px;
+        font-size: 1rem;
+    }
+}
+
+/* Специальные стили для touch-устройств */
+@media (hover: none) and (pointer: coarse) {
+    /* Это touch-устройство */
+    .collage-photo:hover {
+        /* Отключаем hover эффекты */
+        transform: none;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .collage-photo {
+        /* Всегда показываем кнопки управления на touch-устройствах */
+    }
+
+    .collage-photo__controls {
+        opacity: 0.8;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: var(--border-radius-sm);
+        padding: 2px;
+    }
+
+    .photo-item__controls {
+        opacity: 0.8;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: var(--border-radius-sm);
+        padding: 2px;
+    }
 }
 
 /* Calibration Square - точный квадрат 1см x 1см */
